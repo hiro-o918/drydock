@@ -39,14 +39,16 @@ func TestIsDigest(t *testing.T) {
 
 func TestParseDigestFromURI(t *testing.T) {
 	tests := map[string]struct {
-		input   string
-		want    string
-		wantErr bool
+		input         string
+		wantImageName string
+		wantDigest    string
+		wantErr       bool
 	}{
 		"should extract digest when uri format is valid": {
-			input:   "us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:123456789abcdef",
-			want:    "sha256:123456789abcdef",
-			wantErr: false,
+			input:         "us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:123456789abcdef",
+			wantImageName: "us-central1-docker.pkg.dev/my-project/my-repo/my-image",
+			wantDigest:    "sha256:123456789abcdef",
+			wantErr:       false,
 		},
 		"should fail when separator @ is missing": {
 			input:   "us-central1-docker.pkg.dev/my-project/my-repo/my-image:latest",
@@ -60,16 +62,17 @@ func TestParseDigestFromURI(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, err := drydock.ExportParseDigestFromURI(tt.input)
+			gotImageName, gotDigest, err := drydock.ExportParseDigestFromURI(tt.input)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseDigestFromURI() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				if diff := cmp.Diff(tt.want, got); diff != "" {
-					t.Errorf("ParseDigestFromURI() mismatch (-want +got):\n%s", diff)
-				}
+			if gotImageName != tt.wantImageName {
+				t.Errorf("ParseDigestFromURI() gotImageName = %v, want %v", gotImageName, tt.wantImageName)
+			}
+			if gotDigest != tt.wantDigest {
+				t.Errorf("ParseDigestFromURI() gotDigest = %v, want %v", gotDigest, tt.wantDigest)
 			}
 		})
 	}

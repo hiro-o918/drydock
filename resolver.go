@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"slices"
 	"strings"
 	"time"
 
@@ -50,30 +51,6 @@ func NewImageResolver(ctx context.Context) (*ImageResolver, error) {
 // Close closes the underlying API client.
 func (r *ImageResolver) Close() error {
 	return r.client.Close()
-}
-
-// ResolveDigest retrieves the SHA256 digest for a given image tag.
-func (r *ImageResolver) ResolveDigest(ctx context.Context, projectID, location, repo, image, tag string) (string, error) {
-	// Logic: Skip API if already a digest
-	if isDigest(tag) {
-		return tag, nil
-	}
-
-	fullImageName := fmt.Sprintf("projects/%s/locations/%s/repositories/%s/dockerImages/%s:%s",
-		projectID, location, repo, image, tag)
-
-	req := &artifactregistrypb.GetDockerImageRequest{
-		Name: fullImageName,
-	}
-
-	// API Call (Not tested in unit tests)
-	resp, err := r.client.GetDockerImage(ctx, req)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve tag '%s': %w", tag, err)
-	}
-
-	// Logic: Parse response
-	return parseDigestFromURI(resp.Uri)
 }
 
 // AllLatestImages returns an iterator that yields resolved image targets one by one.
@@ -148,23 +125,14 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 			return nil, err
 		}
 
-		// Parse Image Name (e.g. "my-app") from URI
-		// URI format: region-docker.pkg.dev/project/repo/image@sha256:hash
-		parts := strings.Split(img.Uri, "@")
-		if len(parts) < 2 {
-			continue
+		imageName, digest, err := parseDigestFromURI(img.Uri) // Pre-validate digest format
+		if err != nil {
+			return nil, fmt.Errorf("invalid image URI %s: %v", img.Uri, err)
 		}
-		pathParts := strings.Split(parts[0], "/")
-		imageName := pathParts[len(pathParts)-1]
 
 		// Skip if we already have enough candidates for this image
 		if counts[imageName] >= MaxCandidates {
 			continue
-		}
-
-		digest := ""
-		if strings.HasPrefix(parts[1], "sha256:") {
-			digest = parts[1]
 		}
 
 		c := candidateImage{
@@ -207,10 +175,8 @@ func selectBestDigest(candidates []candidateImage) candidateImage {
 
 	for _, c := range candidates {
 		// Priority 1: Check for "latest" tag
-		for _, t := range c.Tags {
-			if t == "latest" {
-				return c
-			}
+		if slices.Contains(c.Tags, "latest") {
+			return c
 		}
 
 		// Priority 2: Track the newest timestamp
@@ -228,14 +194,15 @@ func isDigest(tag string) bool {
 	return strings.HasPrefix(tag, "sha256:")
 }
 
-func parseDigestFromURI(uri string) (string, error) {
+func parseDigestFromURI(uri string) (imageName string, digest string, err error) {
 	// Expected format: region-docker.pkg.dev/project/repo/image@sha256:hash
 	parts := strings.Split(uri, "@")
 	if len(parts) != 2 {
-		return "", fmt.Errorf("unexpected image URI format: %s", uri)
+		return "", "", fmt.Errorf("invalid URI format, missing '@': %s", uri)
 	}
-	if !strings.HasPrefix(parts[1], "sha256:") {
-		return "", fmt.Errorf("invalid digest format in URI: %s", parts[1])
+	digestPart := parts[1]
+	if !strings.HasPrefix(digestPart, "sha256:") {
+		return "", "", fmt.Errorf("invalid digest format, expected sha256: prefix: %s", digestPart)
 	}
-	return parts[1], nil
+	return parts[0], digestPart, nil
 }

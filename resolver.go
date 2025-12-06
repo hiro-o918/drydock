@@ -11,6 +11,7 @@ import (
 	artifactregistry "cloud.google.com/go/artifactregistry/apiv1"
 	"cloud.google.com/go/artifactregistry/apiv1/artifactregistrypb"
 	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 )
 
 const (
@@ -26,9 +27,11 @@ type ImageResolver struct {
 
 // ImageTarget represents a resolved target for scanning.
 type ImageTarget struct {
-	ImageName string // e.g., "my-app"
-	Digest    string // e.g., "sha256:..."
-	URI       string // Full resource URI
+	ImageName  string // e.g., "my-app"
+	Digest     string // e.g., "sha256:..."
+	URI        string // Full resource URI
+	Repository string // e.g., "my-repo"
+	Location   string // e.g., "us-central1"
 }
 
 // candidateImage is an internal struct used for selection logic.
@@ -40,8 +43,8 @@ type candidateImage struct {
 }
 
 // NewImageResolver creates a new resolver with ADC authentication.
-func NewImageResolver(ctx context.Context) (*ImageResolver, error) {
-	client, err := artifactregistry.NewClient(ctx)
+func NewImageResolver(ctx context.Context, opts ...option.ClientOption) (*ImageResolver, error) {
+	client, err := artifactregistry.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Artifact Registry client: %w", err)
 	}
@@ -104,6 +107,9 @@ func (r *ImageResolver) AllLatestImages(ctx context.Context, projectID, location
 
 // scanRepository fetches images from a repo, grouped by image name, and selects the best candidate for each.
 func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]ImageTarget, error) {
+	// Extract location and repository from repoName
+	location, repository := extractLocationAndRepository(repoName)
+
 	// Optimization: Fetch only recent images (server-side sort)
 	imageReq := &artifactregistrypb.ListDockerImagesRequest{
 		Parent:  repoName,
@@ -151,9 +157,11 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 		best := selectBestDigest(candidates)
 		if best.Digest != "" {
 			results = append(results, ImageTarget{
-				ImageName: name,
-				Digest:    best.Digest,
-				URI:       best.URI,
+				ImageName:  name,
+				Digest:     best.Digest,
+				URI:        best.URI,
+				Repository: repository,
+				Location:   location,
 			})
 		}
 	}
@@ -205,4 +213,14 @@ func parseDigestFromURI(uri string) (imageName string, digest string, err error)
 		return "", "", fmt.Errorf("invalid digest format, expected sha256: prefix: %s", digestPart)
 	}
 	return parts[0], digestPart, nil
+}
+
+func extractLocationAndRepository(repoName string) (location, repository string) {
+	// Expected format: projects/{project}/locations/{location}/repositories/{repo}
+	parts := strings.Split(repoName, "/")
+	if len(parts) >= 6 {
+		location = parts[3]   // locations/{location}
+		repository = parts[5] // repositories/{repo}
+	}
+	return
 }

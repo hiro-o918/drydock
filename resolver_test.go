@@ -134,3 +134,44 @@ func TestSelectBestDigest(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractLocationAndRepository(t *testing.T) {
+	tests := map[string]struct {
+		input        string
+		wantLocation string
+		wantRepo     string
+	}{
+		"should extract location and repository when repo name format is valid": {
+			input:        "projects/my-project/locations/us-central1/repositories/my-repo",
+			wantLocation: "us-central1",
+			wantRepo:     "my-repo",
+		},
+		"should handle asia-northeast1 location": {
+			input:        "projects/test/locations/asia-northeast1/repositories/test-repo",
+			wantLocation: "asia-northeast1",
+			wantRepo:     "test-repo",
+		},
+		"should return empty strings when format is invalid": {
+			input:        "invalid",
+			wantLocation: "",
+			wantRepo:     "",
+		},
+		"should return empty strings when parts are insufficient": {
+			input:        "projects/my-project/locations/us-central1",
+			wantLocation: "",
+			wantRepo:     "",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			gotLocation, gotRepo := drydock.ExportExtractLocationAndRepository(tt.input)
+			if gotLocation != tt.wantLocation {
+				t.Errorf("ExtractLocationAndRepository() location = %v, want %v", gotLocation, tt.wantLocation)
+			}
+			if gotRepo != tt.wantRepo {
+				t.Errorf("ExtractLocationAndRepository() repo = %v, want %v", gotRepo, tt.wantRepo)
+			}
+		})
+	}
+}

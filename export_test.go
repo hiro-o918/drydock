@@ -5,4 +5,9 @@ var (
 	ExportConvertToVulnerability = convertToVulnerability
 	ExportFilterBySeverity       = filterBySeverity
 	ExportBuildSummary           = buildSummary
+	ExportIsDigest               = isDigest
+	ExportParseDigestFromURI     = parseDigestFromURI
+	ExportSelectBestDigest       = selectBestDigest
 )
+
+type ExportCandidateImage = candidateImage

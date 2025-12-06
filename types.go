@@ -1,4 +1,4 @@
-package main
+package drydock
 
 import (
 	"context"
@@ -43,7 +43,7 @@ type Vulnerability struct {
 	Description string
 
 	// CVSSScore is the CVSS score
-	CVSSScore float64
+	CVSSScore float32
 
 	// URLs contains reference links
 	URLs []string
@@ -85,8 +85,8 @@ type AnalyzeRequest struct {
 	// Image is the image name
 	Image string
 
-	// Tag is the image tag
-	Tag string
+	// Digest is the image digest (SHA256)
+	Digest string
 
 	// MinSeverity filters vulnerabilities by minimum severity
 	MinSeverity Severity

@@ -1,4 +1,4 @@
-package main
+package drydock
 
 // Config holds the CLI configuration
 type Config struct {

@@ -113,5 +113,11 @@ type AnalyzeResult struct {
 // Exporter defines the interface for exporting analysis results
 type Exporter interface {
 	// Export outputs the analysis results to the configured destination
-	Export(ctx context.Context, result *AnalyzeResult) error
+	Export(ctx context.Context, results []AnalyzeResult) error
 }
+
+type OutputFormat string
+
+const (
+	OutputFormatJSON OutputFormat = "json"
+)

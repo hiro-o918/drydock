@@ -7,6 +7,7 @@ import (
 
 	containeranalysis "cloud.google.com/go/containeranalysis/apiv1"
 	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 	grafeaspb "google.golang.org/genproto/googleapis/grafeas/v1"
 )
 
@@ -16,8 +17,8 @@ type ArtifactRegistryAnalyzer struct {
 }
 
 // NewArtifactRegistryAnalyzer creates a new analyzer with ADC authentication.
-func NewArtifactRegistryAnalyzer(ctx context.Context) (*ArtifactRegistryAnalyzer, error) {
-	caClient, err := containeranalysis.NewClient(ctx)
+func NewArtifactRegistryAnalyzer(ctx context.Context, opts ...option.ClientOption) (*ArtifactRegistryAnalyzer, error) {
+	caClient, err := containeranalysis.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Container Analysis client: %w", err)
 	}

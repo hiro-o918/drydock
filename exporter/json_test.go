@@ -17,7 +17,13 @@ func TestJSONExporter_Export(t *testing.T) {
 	now := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
 
 	validResult := []drydock.AnalyzeResult{{
-		ImageRef: "us-central1-docker.pkg.dev/project/repo/image@sha256:abc123",
+		Artifact: drydock.ArtifactReference{
+			Host:         "us-central1-docker.pkg.dev",
+			ProjectID:    "project",
+			RepositoryID: "repo",
+			ImageName:    "image",
+			Digest:       drydock.ToPtr("sha256:abc123"),
+		},
 		ScanTime: now,
 		Vulnerabilities: []drydock.Vulnerability{
 			{
@@ -42,7 +48,13 @@ func TestJSONExporter_Export(t *testing.T) {
 	}
 
 	emptyResult := []drydock.AnalyzeResult{{
-		ImageRef:        "us-central1-docker.pkg.dev/project/repo/image@sha256:abc123",
+		Artifact: drydock.ArtifactReference{
+			Host:         "us-central1-docker.pkg.dev",
+			ProjectID:    "project",
+			RepositoryID: "repo",
+			ImageName:    "image",
+			Digest:       drydock.ToPtr("sha256:abc123"),
+		},
 		ScanTime:        now,
 		Vulnerabilities: []drydock.Vulnerability{},
 		Summary: drydock.VulnerabilitySummary{
@@ -68,7 +80,7 @@ func TestJSONExporter_Export(t *testing.T) {
 
 				// Verify key fields are present
 				expectedFields := []string{
-					`"ImageRef"`,
+					`"Artifact"`,
 					`"ScanTime"`,
 					`"Vulnerabilities"`,
 					`"Summary"`,

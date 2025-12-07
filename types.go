@@ -2,6 +2,8 @@ package drydock
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -72,20 +74,11 @@ type Analyzer interface {
 
 // AnalyzeRequest contains parameters for vulnerability analysis
 type AnalyzeRequest struct {
-	// ProjectID is the GCP project ID
-	ProjectID string
+	// Artifact is the image reference to analyze
+	Artifact ArtifactReference
 
-	// Location is the Artifact Registry location (e.g., us-central1)
+	// Location is the GCP location (required for resource URL generation)
 	Location string
-
-	// Repository is the repository name
-	Repository string
-
-	// Image is the image name
-	Image string
-
-	// Digest is the image digest (SHA256)
-	Digest string
 
 	// MinSeverity filters vulnerabilities by minimum severity
 	MinSeverity Severity
@@ -93,8 +86,8 @@ type AnalyzeRequest struct {
 
 // AnalyzeResult contains the analysis results
 type AnalyzeResult struct {
-	// ImageRef is the full image reference
-	ImageRef string
+	// Artifact is the analyzed image reference
+	Artifact ArtifactReference
 
 	// ScanTime is when the scan was performed
 	ScanTime time.Time
@@ -124,10 +117,46 @@ const (
 
 // ArtifactReference represents the parsed components of a Google Artifact Registry URI.
 type ArtifactReference struct {
-	Host         string  // e.g., region-docker.pkg.dev
-	ProjectID    string  // e.g., my-project-id
-	RepositoryID string  // e.g., my-app-repo
-	ImageName    string  // e.g., my-service/worker
-	Tag          *string // e.g., v1.0.0 (nil if not present)
-	Digest       *string // e.g., sha256:e3b0... (nil if not present)
+	Host         string  `json:"host"`             // e.g., region-docker.pkg.dev
+	ProjectID    string  `json:"projectID"`        // e.g., my-project-id
+	RepositoryID string  `json:"repositoryID"`     // e.g., my-app-repo
+	ImageName    string  `json:"imageName"`        // e.g., my-service/worker
+	Tag          *string `json:"tag,omitempty"`    // e.g., v1.0.0 (nil if not present)
+	Digest       *string `json:"digest,omitempty"` // e.g., sha256:e3b0... (nil if not present)
+}
+
+// ToResourceURL generates the resource URL for Container Analysis API
+func (a ArtifactReference) ToResourceURL(location string) string {
+	digestStr := ""
+	if a.Digest != nil {
+		digestStr = *a.Digest
+	}
+	return fmt.Sprintf("https://%s-docker.pkg.dev/%s/%s/%s@%s",
+		location, a.ProjectID, a.RepositoryID, a.ImageName, digestStr)
+}
+
+// String returns a human-readable string representation
+func (a ArtifactReference) String() string {
+	ref := fmt.Sprintf("%s/%s/%s/%s",
+		a.Host, a.ProjectID, a.RepositoryID, a.ImageName)
+
+	if a.Tag != nil {
+		ref += ":" + *a.Tag
+	}
+	if a.Digest != nil {
+		ref += "@" + *a.Digest
+	}
+	return ref
+}
+
+// MarshalJSON customizes JSON output to include both structured fields and a URI string
+func (a ArtifactReference) MarshalJSON() ([]byte, error) {
+	type Alias ArtifactReference
+	return json.Marshal(&struct {
+		*Alias
+		URI string `json:"uri"`
+	}{
+		Alias: (*Alias)(&a),
+		URI:   a.String(),
+	})
 }

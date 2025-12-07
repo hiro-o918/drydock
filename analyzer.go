@@ -35,17 +35,15 @@ func (a *ArtifactRegistryAnalyzer) Close() error {
 
 // Analyze retrieves and filters vulnerabilities for the specified image digest.
 func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeRequest) (*AnalyzeResult, error) {
-	// Construct the Resource URL. This acts as the search key in Container Analysis.
-	// Format must be: https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMAGE@DIGEST
-	resourceURL := fmt.Sprintf("https://%s-docker.pkg.dev/%s/%s/%s@%s",
-		req.Location, req.ProjectID, req.Repository, req.Image, req.Digest)
+	// Generate resource URL using ArtifactReference method
+	resourceURL := req.Artifact.ToResourceURL(req.Location)
 
 	// Obtain the Grafeas client from the Container Analysis client.
 	grafeasClient := a.containerAnalysisClient.GetGrafeasClient()
 
 	// Filter specifically for vulnerabilities attached to this resource URL.
 	listReq := &grafeaspb.ListOccurrencesRequest{
-		Parent: fmt.Sprintf("projects/%s", req.ProjectID),
+		Parent: fmt.Sprintf("projects/%s", req.Artifact.ProjectID),
 		Filter: fmt.Sprintf(`resourceUrl="%s" AND kind="VULNERABILITY"`, resourceURL),
 	}
 
@@ -72,7 +70,7 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 	filtered := filterBySeverity(vulnerabilities, req.MinSeverity)
 
 	return &AnalyzeResult{
-		ImageRef:        resourceURL,
+		Artifact:        req.Artifact,
 		ScanTime:        time.Now(),
 		Vulnerabilities: filtered,
 		Summary:         buildSummary(filtered),

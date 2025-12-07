@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -132,10 +133,19 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 			return nil, err
 		}
 
-		imageName, digest, err := parseDigestFromURI(img.Uri) // Pre-validate digest format
+		artifactReference, err := ParseArtifactURI(img.Uri)
 		if err != nil {
 			return nil, fmt.Errorf("invalid image URI %s: %v", img.Uri, err)
 		}
+		if artifactReference.Digest == nil {
+			log.Warn().
+				Str("uri", img.Uri).
+				Msg("Skipping image without digest")
+			// Skip images without digest (should not happen in GAR)
+			continue
+		}
+		imageName := artifactReference.ImageName
+		digest := *artifactReference.Digest
 
 		// Skip if we already have enough candidates for this image
 		if counts[imageName] >= MaxCandidates {
@@ -157,6 +167,14 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 	for name, candidates := range grouped {
 		best := selectBestDigest(name, location, repository, candidates)
 		if best.Digest != "" {
+			log.Debug().
+				Str("location", location).
+				Str("repository", repository).
+				Str("image_name", name).
+				Str("digest", best.Digest).
+				Str("uri", best.URI).
+				Msg("Resolved image target")
+
 			results = append(results, ImageTarget{
 				ImageName:  name,
 				Digest:     best.Digest,
@@ -215,23 +233,26 @@ func selectBestDigest(imageName, location, repository string, candidates []candi
 	return newest
 }
 
-// Internal Helper Functions
+// compiledGarRegex pre-compiles the regex for performance.
+// Regex remains the same as the previous version.
+var compiledGarRegex = regexp.MustCompile(`^([a-z0-9-]+-docker\.pkg\.dev)/([^/]+)/([^/]+)/([^:@]+)(?::([^@]+))?(?:@(sha256:[a-fA-F0-9]{64}))?$`)
 
-func isDigest(tag string) bool {
-	return strings.HasPrefix(tag, "sha256:")
-}
+// ParseArtifactURI parses a raw GAR URI string into a structured ArtifactReference.
+func ParseArtifactURI(uri string) (ArtifactReference, error) {
+	matches := compiledGarRegex.FindStringSubmatch(uri)
 
-func parseDigestFromURI(uri string) (imageName string, digest string, err error) {
-	// Expected format: region-docker.pkg.dev/project/repo/image@sha256:hash
-	parts := strings.Split(uri, "@")
-	if len(parts) != 2 {
-		return "", "", fmt.Errorf("invalid URI format, missing '@': %s", uri)
+	if matches == nil {
+		return ArtifactReference{}, fmt.Errorf("invalid GAR URI format: %s", uri)
 	}
-	digestPart := parts[1]
-	if !strings.HasPrefix(digestPart, "sha256:") {
-		return "", "", fmt.Errorf("invalid digest format, expected sha256: prefix: %s", digestPart)
-	}
-	return parts[0], digestPart, nil
+
+	return ArtifactReference{
+		Host:         matches[1],
+		ProjectID:    matches[2],
+		RepositoryID: matches[3],
+		ImageName:    matches[4],
+		Tag:          ToPtr(matches[5]),
+		Digest:       ToPtr(matches[6]),
+	}, nil
 }
 
 func extractLocationAndRepository(repoName string) (location, repository string) {

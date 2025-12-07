@@ -81,10 +81,10 @@ func TestJSONExporter_Export(t *testing.T) {
 
 				// Verify key fields are present
 				expectedFields := []string{
-					`"Artifact"`,
-					`"ScanTime"`,
-					`"Vulnerabilities"`,
-					`"Summary"`,
+					`"artifact"`,
+					`"scanTime"`,
+					`"vulnerabilities"`,
+					`"summary"`,
 					`"CVE-2023-0001"`,
 					`"openssl"`,
 				}
@@ -114,8 +114,8 @@ func TestJSONExporter_Export(t *testing.T) {
 			results: emptyResult,
 			validate: func(t *testing.T, output string) {
 				// Verify empty array is properly represented
-				if !strings.Contains(output, `"Vulnerabilities": []`) {
-					t.Error("Expected empty Vulnerabilities array")
+				if !strings.Contains(output, `"vulnerabilities": []`) {
+					t.Error("Expected empty vulnerabilities array")
 				}
 
 				// Verify JSON structure by unmarshaling

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/hiro-o918/drydock/schemas"
+	"github.com/hiro-o918/drydock/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,23 +21,58 @@ type Scanner struct {
 	exporter    Exporter
 }
 
-// NewScanner creates a new Scanner instance.
+// ScannerOption defines a function type that can configure a Scanner
+type ScannerOption func(*Scanner) error
+
+// WithProjectID sets the GCP project ID for the scanner
+func WithProjectID(projectID string) ScannerOption {
+	return func(s *Scanner) error {
+		s.projectID = projectID
+		return nil
+	}
+}
+
+// WithConcurrency sets the concurrency level for parallel scanning
+func WithConcurrency(concurrency uint8) ScannerOption {
+	return func(s *Scanner) error {
+		s.concurrency = concurrency
+		return nil
+	}
+}
 func NewScanner(
+	ctx context.Context,
 	location string,
-	projectID string,
-	concurrency uint8,
 	resolver *ImageResolver,
 	analyzer *ArtifactRegistryAnalyzer,
 	exporter Exporter,
-) *Scanner {
-	return &Scanner{
+	opts ...ScannerOption,
+) (*Scanner, error) {
+	// Initialize scanner with required fields
+	scanner := &Scanner{
 		location:    location,
-		projectID:   projectID,
-		concurrency: concurrency,
+		concurrency: 5, // Default concurrency
 		resolver:    resolver,
 		analyzer:    analyzer,
 		exporter:    exporter,
 	}
+
+	// Apply all options if provided
+	for _, opt := range opts {
+		if err := opt(scanner); err != nil {
+			return nil, fmt.Errorf("failed to apply scanner option: %w", err)
+		}
+	}
+
+	// If projectID is still empty after applying options, try to determine it from environment
+	if scanner.projectID == "" {
+		var err error
+		scanner.projectID, err = utils.GetProjectID(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("project ID is required but was not provided and could not be determined: %w", err)
+		}
+	}
+
+	return scanner, nil
 }
 
 // scanCollector is a helper struct to manage thread-safe result collection.

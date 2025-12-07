@@ -84,14 +84,27 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 
 	// 4. Execution Phase
 	log.Info().Msg("Starting vulnerability scan...")
-	scanner := drydock.NewScanner(
+
+	// Create scanner options
+	var scannerOpts []drydock.ScannerOption
+	if cfg.ProjectID != "" {
+		scannerOpts = append(scannerOpts, drydock.WithProjectID(cfg.ProjectID))
+	}
+	scannerOpts = append(scannerOpts, drydock.WithConcurrency(cfg.Concurrency))
+
+	// Initialize scanner with required params and optional projectID
+	scanner, err := drydock.NewScanner(
+		ctx,
 		cfg.Location,
-		cfg.ProjectID,
-		cfg.Concurrency,
 		resolver,
 		analyzer,
 		resultExporter,
+		scannerOpts...,
 	)
+	if err != nil {
+		return fmt.Errorf("failed to initialize scanner: %w", err)
+	}
+
 	minSeverity, err := parseSeverity(cfg.MinSeverity)
 	if err != nil {
 		return fmt.Errorf("invalid minimum severity: %w", err)

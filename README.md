@@ -41,10 +41,10 @@ You can also download the pre-built binary from the [Releases page](https://gith
 
 ### Quick Start
 
-Scan a location for **HIGH** and **CRITICAL** vulnerabilities (default behavior).
+Scan a location for **HIGH** and **CRITICAL** vulnerabilities.
 
 ```bash
-drydock -l us-central1
+drydock -p my-project-id -l us-central1
 ```
 
 ### Common Scenarios
@@ -53,25 +53,33 @@ drydock -l us-central1
 Focus on the most urgent threats.
 
 ```bash
-drydock -l us-central1 -s CRITICAL
+drydock -p my-project-id -l us-central1 -s CRITICAL
 ```
 
 **2. Export report to CSV**
 Generate a spreadsheet-compatible file for reporting.
 
 ```bash
-drydock -l us-central1 -o csv > report.csv
+drydock -p my-project-id -l us-central1 -o csv > report.csv
+```
+
+**3. Inference Project ID from Environment**
+If you don't specify a project ID, Drydock will attempt to infer it from your environment (e.g., environment variables, service account credentials, or GCE metadata server).
+
+```bash
+drydock -l us-central1
 ```
 
 ### Options
 
-| Flag             | Description                                                     | Default |
-| :--------------- | :-------------------------------------------------------------- | :------ |
-| `-l`, `--location`      | **(Required)** Artifact Registry location (e.g., `us-central1`) | -       |
-| `-p`, `--project`       | Google Cloud Project ID                          | current project from gcloud |
-| `-s`, `--min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`  |
-| `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`  |
-| `-d` `--debug`         | Enable verbose logging                                          | `false` |
+| Flag                    | Description                                                     | Default                 |
+| :---------------------- | :-------------------------------------------------------------- | :---------------------- |
+| `-l`, `--location`      | **(Required)** Artifact Registry location (e.g., `us-central1`) | -                       |
+| `-p`, `--project`       | Google Cloud Project ID                                         | Active `gcloud` project |
+| `-s`, `--min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`                  |
+| `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`                  |
+| `-d`, `--debug`         | Enable verbose logging                                          | `false`                 |
+| `-c`, `--concurrency`   | Number of concurrent API requests                               | `5`                     |
 
 ## 🔑 Prerequisites
 

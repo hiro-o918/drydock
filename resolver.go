@@ -182,11 +182,22 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 				Str("uri", best.URI).
 				Msg("Resolved image target")
 
+			// get one tag if available
+			if len(best.Tags) > 0 {
+				artifactRef.Tag = utils.ToPtr(best.Tags[0])
+			}
+
 			results = append(results, ImageTarget{
 				Artifact: artifactRef,
 				URI:      best.URI,
 				Location: location,
 			})
+		} else {
+			log.Warn().
+				Str("location", location).
+				Str("repository", repository).
+				Str("image_name", name).
+				Msg("No valid digest found for image, skipping")
 		}
 	}
 

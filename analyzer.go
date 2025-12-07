@@ -35,10 +35,6 @@ func (a *ArtifactRegistryAnalyzer) Close() error {
 
 // Analyze retrieves and filters vulnerabilities for the specified image digest.
 func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeRequest) (*AnalyzeResult, error) {
-	if req.Digest == "" {
-		return nil, fmt.Errorf("digest is required for analysis")
-	}
-
 	// Construct the Resource URL. This acts as the search key in Container Analysis.
 	// Format must be: https://LOCATION-docker.pkg.dev/PROJECT/REPO/IMAGE@DIGEST
 	resourceURL := fmt.Sprintf("https://%s-docker.pkg.dev/%s/%s/%s@%s",

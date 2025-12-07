@@ -10,6 +10,7 @@ import (
 
 	artifactregistry "cloud.google.com/go/artifactregistry/apiv1"
 	"cloud.google.com/go/artifactregistry/apiv1/artifactregistrypb"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -154,7 +155,7 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 	// Select the single best digest for each image group
 	var results []ImageTarget
 	for name, candidates := range grouped {
-		best := selectBestDigest(candidates)
+		best := selectBestDigest(name, location, repository, candidates)
 		if best.Digest != "" {
 			results = append(results, ImageTarget{
 				ImageName:  name,
@@ -172,7 +173,7 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 // selectBestDigest chooses the best candidate based on policy:
 // 1. Prefer candidate with "latest" tag.
 // 2. If no "latest", prefer the one with the most recent UpdateTime.
-func selectBestDigest(candidates []candidateImage) candidateImage {
+func selectBestDigest(imageName, location, repository string, candidates []candidateImage) candidateImage {
 	if len(candidates) == 0 {
 		return candidateImage{}
 	}
@@ -184,6 +185,15 @@ func selectBestDigest(candidates []candidateImage) candidateImage {
 	for _, c := range candidates {
 		// Priority 1: Check for "latest" tag
 		if slices.Contains(c.Tags, "latest") {
+			log.Debug().
+				Str("location", location).
+				Str("repository", repository).
+				Str("image", imageName).
+				Str("digest", c.Digest).
+				Strs("tags", c.Tags).
+				Time("update_time", c.UpdateTime).
+				Str("selection_reason", "latest_tag").
+				Msg("Selected image digest")
 			return c
 		}
 
@@ -193,6 +203,15 @@ func selectBestDigest(candidates []candidateImage) candidateImage {
 		}
 	}
 
+	log.Debug().
+		Str("location", location).
+		Str("repository", repository).
+		Str("image", imageName).
+		Str("digest", newest.Digest).
+		Strs("tags", newest.Tags).
+		Time("update_time", newest.UpdateTime).
+		Str("selection_reason", "newest_timestamp").
+		Msg("Selected image digest")
 	return newest
 }
 

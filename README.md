@@ -44,7 +44,7 @@ You can also download the pre-built binary from the [Releases page](https://gith
 Scan a location for **HIGH** and **CRITICAL** vulnerabilities (default behavior).
 
 ```bash
-drydock -location us-central1
+drydock -l us-central1
 ```
 
 ### Common Scenarios
@@ -53,25 +53,25 @@ drydock -location us-central1
 Focus on the most urgent threats.
 
 ```bash
-drydock -location us-central1 -min-severity CRITICAL
+drydock -l us-central1 -s CRITICAL
 ```
 
 **2. Export report to CSV**
 Generate a spreadsheet-compatible file for reporting.
 
 ```bash
-drydock -location us-central1 -output-format csv > report.csv
+drydock -l us-central1 -o csv > report.csv
 ```
 
 ### Options
 
 | Flag             | Description                                                     | Default |
 | :--------------- | :-------------------------------------------------------------- | :------ |
-| `-location`      | **(Required)** Artifact Registry location (e.g., `us-central1`) | -       |
-| `-project`       | Google Cloud Project ID                          | current project from gcloud |
-| `-min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`  |
-| `-output-format` | Output format: `json`, `csv`, `tsv`                             | `json`  |
-| `-debug`         | Enable verbose logging                                          | `false` |
+| `-l`, `--location`      | **(Required)** Artifact Registry location (e.g., `us-central1`) | -       |
+| `-p`, `--project`       | Google Cloud Project ID                          | current project from gcloud |
+| `-s`, `--min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`  |
+| `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`  |
+| `-d` `--debug`         | Enable verbose logging                                          | `false` |
 
 ## 🔑 Prerequisites
 

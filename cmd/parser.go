@@ -22,11 +22,8 @@ type Config struct {
 
 // Validate checks if the configuration is valid.
 func (c *Config) Validate() error {
-	if c.ProjectID == "" {
-		return errors.New("flag -project is required")
-	}
 	if c.Location == "" {
-		return errors.New("flag -location is required")
+		return errors.New("flag `-l`, `--location` is required")
 	}
 	// OutputFormat validation is handled during flag parsing, so it's not needed here.
 	return nil
@@ -41,15 +38,28 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 	fs.SetOutput(stderr)
 
 	cfg := &Config{
-		// Set default values here
 		OutputFormat: drydock.OutputFormatJSON,
 	}
 
+	// --project / -p
 	fs.StringVar(&cfg.ProjectID, "project", "", "GCP project ID (required)")
+	fs.StringVar(&cfg.ProjectID, "p", "", "Project ID (alias for --project)")
+
+	// --location / -l
 	fs.StringVar(&cfg.Location, "location", "", "Artifact Registry location (required)")
+	fs.StringVar(&cfg.Location, "l", "", "Location (alias for --location)")
+
+	// --min-severity / -s
 	fs.StringVar(&cfg.MinSeverity, "min-severity", "HIGH", "Minimum severity level")
+	fs.StringVar(&cfg.MinSeverity, "s", "HIGH", "Severity (alias for --min-severity)")
+
+	// --output-format / -o
 	fs.Var(&cfg.OutputFormat, "output-format", "Output format (json, csv, tsv)")
+	fs.Var(&cfg.OutputFormat, "o", "Output format (alias for --output-format)")
+
+	// --debug / -d
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug logging")
+	fs.BoolVar(&cfg.Debug, "d", false, "Debug (alias for --debug)")
 
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Drydock - Artifact Registry Vulnerability Scanner")

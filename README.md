@@ -42,33 +42,32 @@ You can also download the pre-built binary from the [Releases page](https://gith
 ### Quick Start
 
 Scan a location for **HIGH** and **CRITICAL** vulnerabilities.
-(The project ID is automatically inferred from your local `gcloud` configuration or environment variables.)
-
-```bash
-drydock -l us-central1
-```
-
-### Common Scenarios
-
-**1. Specify a Project ID (Recommended)**
-Explicitly define the project to avoid ambiguity.
 
 ```bash
 drydock -p my-project-id -l us-central1
 ```
 
-**2. Find CRITICAL vulnerabilities only**
+### Common Scenarios
+
+**1. Find CRITICAL vulnerabilities only**
 Focus on the most urgent threats.
 
 ```bash
-drydock -l us-central1 -s CRITICAL
+drydock -p my-project-id -l us-central1 -s CRITICAL
 ```
 
-**3. Export report to CSV**
+**2. Export report to CSV**
 Generate a spreadsheet-compatible file for reporting.
 
 ```bash
-drydock -l us-central1 -o csv > report.csv
+drydock -p my-project-id -l us-central1 -o csv > report.csv
+```
+
+**3. Inference Project ID from Environment**
+If you don't specify a project ID, Drydock will attempt to infer it from your environment (e.g., environment variables, service account credentials, or GCE metadata server).
+
+```bash
+drydock -l us-central1
 ```
 
 ### Options
@@ -80,6 +79,7 @@ drydock -l us-central1 -o csv > report.csv
 | `-s`, `--min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`                  |
 | `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`                  |
 | `-d`, `--debug`         | Enable verbose logging                                          | `false`                 |
+| `-c`, `--concurrency`   | Number of concurrent API requests                               | `5`                     |
 
 ## 🔑 Prerequisites
 

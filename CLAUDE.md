@@ -50,30 +50,6 @@ The system consists of four main components. The **Image Resolver** acts as the 
 3.  **Analyzer**: Strictly focuses on fetching vulnerability data. It accepts a specific **Digest** as input (isolating it from tag resolution logic) and queries the Artifact Registry/Container Analysis API.
 4.  **Exporter**: Abstract interface for outputting the aggregated vulnerability results in various formats (JSON, Table, CSV).
 
-### Workflow with Image Resolver
-
-1.  **Input**: User provides a target (e.g., `my-image:latest` OR `projects/my-project`).
-2.  **Resolution**:
-    - The **CLI** calls **Image Resolver**.
-    - If the input is a tag, Resolver calls `GetDockerImage` to find the Digest.
-    - _(Future)_ If the input is a project, Resolver iterates through repositories to find the latest Digest for every image.
-3.  **Analysis**: The CLI takes the resolved Digest(s) and passes them to the **Analyzer**.
-4.  **Output**: Results are passed to the **Exporter**.
-
-## Data Flow
-
-1.  User executes CLI with parameters (project, repository, image, severity level, output format).
-2.  CLI validates input and creates Config.
-3.  **CLI instantiates Image Resolver to resolve the input tag/project to specific SHA256 Digest(s).**
-4.  CLI instantiates Analyzer with appropriate credentials.
-5.  **CLI selects and instantiates the appropriate Exporter based on output configuration (DI).**
-6.  Analyzer connects to Artifact Registry API using the resolved Digest.
-7.  Analyzer fetches vulnerability scan results.
-8.  Analyzer filters and transforms data into `AnalyzeResult`.
-9.  CLI invokes `Exporter.Export()` with the results.
-10. Exporter formats and outputs the results to its configured destination.
-11. CLI returns exit code (0 for success, non-zero for errors or if vulnerabilities found).
-
 ## Design Principles
 
 ### 1\. Flat Package Structure
@@ -140,3 +116,10 @@ The system consists of four main components. The **Image Resolver** acts as the 
 - **Table-Driven Scenarios**: Use map-based table-driven tests (`map[string]struct`) with descriptive keys (e.g., "should ... when ...") to clearly define behavior and edge cases.
 - **Structural Assertions**: Utilize `google/go-cmp` for declarative and readable deep equality checks of complex structs, removing the need for manual field-by-field assertions.
 - **No API Mocking**: Skip complex mocking of third-party clients (Container Analysis API); focus strictly on verifying the processing logic that consumes the client output.
+
+### Comment and Documentation Standards
+
+- MUST writes in English.
+- Public types and functions have clear GoDoc comments.
+- Internal helper functions have concise comments explaining their purpose.
+

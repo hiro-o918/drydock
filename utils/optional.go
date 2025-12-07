@@ -1,4 +1,4 @@
-package drydock
+package utils
 
 func IsZero[T comparable](v T) bool {
 	var zero T // zero will hold the zero value for type T

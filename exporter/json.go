@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/hiro-o918/drydock"
+	"github.com/hiro-o918/drydock/schemas"
 )
 
 // JSONExporter exports analysis results in JSON format
@@ -27,7 +27,7 @@ func NewDefaultJSONExporter() *JSONExporter {
 }
 
 // Export outputs the analysis results in indented JSON format
-func (e *JSONExporter) Export(ctx context.Context, results []drydock.AnalyzeResult) error {
+func (e *JSONExporter) Export(ctx context.Context, results []schemas.AnalyzeResult) error {
 	data, err := json.MarshalIndent(results, "", "  ")
 	if err != nil {
 		return err

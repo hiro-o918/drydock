@@ -9,26 +9,27 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hiro-o918/drydock"
 	"github.com/hiro-o918/drydock/exporter"
+	"github.com/hiro-o918/drydock/schemas"
+	"github.com/hiro-o918/drydock/utils"
 )
 
 func TestJSONExporter_Export(t *testing.T) {
 	now := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
 
-	validResult := []drydock.AnalyzeResult{{
-		Artifact: drydock.ArtifactReference{
+	validResult := []schemas.AnalyzeResult{{
+		Artifact: schemas.ArtifactReference{
 			Host:         "us-central1-docker.pkg.dev",
 			ProjectID:    "project",
 			RepositoryID: "repo",
 			ImageName:    "image",
-			Digest:       drydock.ToPtr("sha256:abc123"),
+			Digest:       utils.ToPtr("sha256:abc123"),
 		},
 		ScanTime: now,
-		Vulnerabilities: []drydock.Vulnerability{
+		Vulnerabilities: []schemas.Vulnerability{
 			{
 				ID:               "CVE-2023-0001",
-				Severity:         drydock.SeverityHigh,
+				Severity:         schemas.SeverityHigh,
 				PackageName:      "openssl",
 				InstalledVersion: "1.1.1",
 				FixedVersion:     "1.1.1t",
@@ -37,36 +38,36 @@ func TestJSONExporter_Export(t *testing.T) {
 				URLs:             []string{"https://cve.mitre.org/example"},
 			},
 		},
-		Summary: drydock.VulnerabilitySummary{
+		Summary: schemas.VulnerabilitySummary{
 			TotalCount:   1,
 			FixableCount: 1,
-			CountBySeverity: map[drydock.Severity]int{
-				drydock.SeverityHigh: 1,
+			CountBySeverity: map[schemas.Severity]int{
+				schemas.SeverityHigh: 1,
 			},
 		},
 	},
 	}
 
-	emptyResult := []drydock.AnalyzeResult{{
-		Artifact: drydock.ArtifactReference{
+	emptyResult := []schemas.AnalyzeResult{{
+		Artifact: schemas.ArtifactReference{
 			Host:         "us-central1-docker.pkg.dev",
 			ProjectID:    "project",
 			RepositoryID: "repo",
 			ImageName:    "image",
-			Digest:       drydock.ToPtr("sha256:abc123"),
+			Digest:       utils.ToPtr("sha256:abc123"),
 		},
 		ScanTime:        now,
-		Vulnerabilities: []drydock.Vulnerability{},
-		Summary: drydock.VulnerabilitySummary{
+		Vulnerabilities: []schemas.Vulnerability{},
+		Summary: schemas.VulnerabilitySummary{
 			TotalCount:      0,
 			FixableCount:    0,
-			CountBySeverity: map[drydock.Severity]int{},
+			CountBySeverity: map[schemas.Severity]int{},
 		},
 	},
 	}
 
 	tests := map[string]struct {
-		results  []drydock.AnalyzeResult
+		results  []schemas.AnalyzeResult
 		validate func(t *testing.T, output string)
 		wantErr  bool
 	}{
@@ -99,7 +100,7 @@ func TestJSONExporter_Export(t *testing.T) {
 				}
 
 				// Verify JSON structure by unmarshaling
-				var unmarshaled []drydock.AnalyzeResult
+				var unmarshaled []schemas.AnalyzeResult
 				if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &unmarshaled); err != nil {
 					t.Fatalf("Failed to unmarshal JSON: %v", err)
 				}
@@ -118,7 +119,7 @@ func TestJSONExporter_Export(t *testing.T) {
 				}
 
 				// Verify JSON structure by unmarshaling
-				var unmarshaled []drydock.AnalyzeResult
+				var unmarshaled []schemas.AnalyzeResult
 				if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &unmarshaled); err != nil {
 					t.Fatalf("Failed to unmarshal JSON: %v", err)
 				}

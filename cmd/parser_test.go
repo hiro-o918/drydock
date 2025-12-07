@@ -3,34 +3,34 @@ package main
 import (
 	"testing"
 
-	"github.com/hiro-o918/drydock"
+	"github.com/hiro-o918/drydock/schemas"
 )
 
 func TestParseSeverity(t *testing.T) {
 	tests := map[string]struct {
 		input   string
-		want    drydock.Severity
+		want    schemas.Severity
 		wantErr bool
 	}{
 		"should parse MINIMAL severity": {
 			input: "MINIMAL",
-			want:  drydock.SeverityMinimal,
+			want:  schemas.SeverityMinimal,
 		},
 		"should parse LOW severity": {
 			input: "LOW",
-			want:  drydock.SeverityLow,
+			want:  schemas.SeverityLow,
 		},
 		"should parse MEDIUM severity": {
 			input: "MEDIUM",
-			want:  drydock.SeverityMedium,
+			want:  schemas.SeverityMedium,
 		},
 		"should parse HIGH severity": {
 			input: "HIGH",
-			want:  drydock.SeverityHigh,
+			want:  schemas.SeverityHigh,
 		},
 		"should parse CRITICAL severity": {
 			input: "CRITICAL",
-			want:  drydock.SeverityCritical,
+			want:  schemas.SeverityCritical,
 		},
 		"should return error when severity is invalid": {
 			input:   "INVALID",

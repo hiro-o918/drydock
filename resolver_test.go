@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hiro-o918/drydock"
+	"github.com/hiro-o918/drydock/schemas"
+	"github.com/hiro-o918/drydock/utils"
 )
 
 func TestParseArtifactURI(t *testing.T) {
@@ -14,44 +16,44 @@ func TestParseArtifactURI(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		want    drydock.ArtifactReference
+		want    schemas.ArtifactReference
 		wantErr bool
 	}{
 		{
 			name:  "Valid URI with Digest",
 			input: "us-central1-docker.pkg.dev/my-project/my-repo/my-image@" + validHash,
-			want: drydock.ArtifactReference{
+			want: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
 				Tag:          nil,
-				Digest:       drydock.ToPtr(validHash),
+				Digest:       utils.ToPtr(validHash),
 			},
 			wantErr: false,
 		},
 		{
 			name:  "Valid URI with Nested Namespace and Digest",
 			input: "us-central1-docker.pkg.dev/my-project/my-repo/namespace/my-image@" + validHash,
-			want: drydock.ArtifactReference{
+			want: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "namespace/my-image",
 				Tag:          nil,
-				Digest:       drydock.ToPtr(validHash),
+				Digest:       utils.ToPtr(validHash),
 			},
 			wantErr: false,
 		},
 		{
 			name:  "Valid URI with Tag only",
 			input: "asia-northeast1-docker.pkg.dev/prod/docker/nginx:v1.2.3",
-			want: drydock.ArtifactReference{
+			want: schemas.ArtifactReference{
 				Host:         "asia-northeast1-docker.pkg.dev",
 				ProjectID:    "prod",
 				RepositoryID: "docker",
 				ImageName:    "nginx",
-				Tag:          drydock.ToPtr("v1.2.3"),
+				Tag:          utils.ToPtr("v1.2.3"),
 				Digest:       nil,
 			},
 			wantErr: false,
@@ -59,13 +61,13 @@ func TestParseArtifactURI(t *testing.T) {
 		{
 			name:  "Valid URI with Tag AND Digest (Pinning)",
 			input: "asia-northeast1-docker.pkg.dev/prod/docker/nginx:latest@" + validHash,
-			want: drydock.ArtifactReference{
+			want: schemas.ArtifactReference{
 				Host:         "asia-northeast1-docker.pkg.dev",
 				ProjectID:    "prod",
 				RepositoryID: "docker",
 				ImageName:    "nginx",
-				Tag:          drydock.ToPtr("latest"),
-				Digest:       drydock.ToPtr(validHash),
+				Tag:          utils.ToPtr("latest"),
+				Digest:       utils.ToPtr(validHash),
 			},
 			wantErr: false,
 		},

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	containeranalysis "cloud.google.com/go/containeranalysis/apiv1"
+	"github.com/hiro-o918/drydock/schemas"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	grafeaspb "google.golang.org/genproto/googleapis/grafeas/v1"
@@ -34,7 +35,7 @@ func (a *ArtifactRegistryAnalyzer) Close() error {
 }
 
 // Analyze retrieves and filters vulnerabilities for the specified image digest.
-func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeRequest) (*AnalyzeResult, error) {
+func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeRequest) (*schemas.AnalyzeResult, error) {
 	// Generate resource URL using ArtifactReference method
 	resourceURL := req.Artifact.ToResourceURL(req.Location)
 
@@ -48,7 +49,7 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 	}
 
 	it := grafeasClient.ListOccurrences(ctx, listReq)
-	vulnerabilities := make([]Vulnerability, 0)
+	vulnerabilities := make([]schemas.Vulnerability, 0)
 
 	for {
 		occ, err := it.Next()
@@ -69,7 +70,7 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 
 	filtered := filterBySeverity(vulnerabilities, req.MinSeverity)
 
-	return &AnalyzeResult{
+	return &schemas.AnalyzeResult{
 		Artifact:        req.Artifact,
 		ScanTime:        time.Now(),
 		Vulnerabilities: filtered,
@@ -79,13 +80,13 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 
 // Internal Helper Functions
 
-func convertToVulnerability(occ *grafeaspb.Occurrence) (Vulnerability, error) {
+func convertToVulnerability(occ *grafeaspb.Occurrence) (schemas.Vulnerability, error) {
 	vulnDetails := occ.GetVulnerability()
 	if vulnDetails == nil {
-		return Vulnerability{}, fmt.Errorf("occurrence does not contain vulnerability details")
+		return schemas.Vulnerability{}, fmt.Errorf("occurrence does not contain vulnerability details")
 	}
 
-	vuln := Vulnerability{
+	vuln := schemas.Vulnerability{
 		ID:        vulnDetails.ShortDescription,
 		Severity:  convertSeverity(vulnDetails.Severity),
 		CVSSScore: vulnDetails.CvssScore,
@@ -111,20 +112,20 @@ func convertToVulnerability(occ *grafeaspb.Occurrence) (Vulnerability, error) {
 	return vuln, nil
 }
 
-func convertSeverity(s grafeaspb.Severity) Severity {
+func convertSeverity(s grafeaspb.Severity) schemas.Severity {
 	switch s {
 	case grafeaspb.Severity_MINIMAL:
-		return SeverityMinimal
+		return schemas.SeverityMinimal
 	case grafeaspb.Severity_LOW:
-		return SeverityLow
+		return schemas.SeverityLow
 	case grafeaspb.Severity_MEDIUM:
-		return SeverityMedium
+		return schemas.SeverityMedium
 	case grafeaspb.Severity_HIGH:
-		return SeverityHigh
+		return schemas.SeverityHigh
 	case grafeaspb.Severity_CRITICAL:
-		return SeverityCritical
+		return schemas.SeverityCritical
 	default:
-		return SeverityUnspecified
+		return schemas.SeverityUnspecified
 	}
 }
 
@@ -138,22 +139,22 @@ func convertUrls(urls []*grafeaspb.RelatedUrl) []string {
 	return result
 }
 
-func filterBySeverity(vulns []Vulnerability, min Severity) []Vulnerability {
-	if min == SeverityUnspecified {
+func filterBySeverity(vulns []schemas.Vulnerability, min schemas.Severity) []schemas.Vulnerability {
+	if min == schemas.SeverityUnspecified {
 		return vulns
 	}
 
-	levels := map[Severity]int{
-		SeverityUnspecified: 0,
-		SeverityMinimal:     1,
-		SeverityLow:         2,
-		SeverityMedium:      3,
-		SeverityHigh:        4,
-		SeverityCritical:    5,
+	levels := map[schemas.Severity]int{
+		schemas.SeverityUnspecified: 0,
+		schemas.SeverityMinimal:     1,
+		schemas.SeverityLow:         2,
+		schemas.SeverityMedium:      3,
+		schemas.SeverityHigh:        4,
+		schemas.SeverityCritical:    5,
 	}
 
 	threshold := levels[min]
-	filtered := make([]Vulnerability, 0)
+	filtered := make([]schemas.Vulnerability, 0)
 
 	for _, v := range vulns {
 		if levels[v.Severity] >= threshold {
@@ -163,10 +164,10 @@ func filterBySeverity(vulns []Vulnerability, min Severity) []Vulnerability {
 	return filtered
 }
 
-func buildSummary(vulns []Vulnerability) VulnerabilitySummary {
-	summary := VulnerabilitySummary{
+func buildSummary(vulns []schemas.Vulnerability) schemas.VulnerabilitySummary {
+	summary := schemas.VulnerabilitySummary{
 		TotalCount:      len(vulns),
-		CountBySeverity: make(map[Severity]int),
+		CountBySeverity: make(map[schemas.Severity]int),
 	}
 
 	for _, v := range vulns {

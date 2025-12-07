@@ -1,4 +1,4 @@
-package drydock_test
+package schemas_test
 
 import (
 	"encoding/json"
@@ -6,27 +6,29 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hiro-o918/drydock"
+	"github.com/hiro-o918/drydock/schemas"
+	"github.com/hiro-o918/drydock/utils"
 )
 
 func TestArtifactReference_ToResourceURL(t *testing.T) {
 	tests := map[string]struct {
-		artifact ArtifactReference
+		artifact schemas.ArtifactReference
 		location string
 		want     string
 	}{
 		"should generate correct resource URL with digest": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
-				Digest:       drydock.ToPtr("sha256:abc123"),
+				Digest:       utils.ToPtr("sha256:abc123"),
 			},
 			location: "us-central1",
 			want:     "https://us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:abc123",
 		},
 		"should handle nil digest": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "asia-northeast1-docker.pkg.dev",
 				ProjectID:    "test-project",
 				RepositoryID: "test-repo",
@@ -37,12 +39,12 @@ func TestArtifactReference_ToResourceURL(t *testing.T) {
 			want:     "https://asia-northeast1-docker.pkg.dev/test-project/test-repo/test-image@",
 		},
 		"should handle nested image name": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "namespace/my-image",
-				Digest:       drydock.ToPtr("sha256:def456"),
+				Digest:       utils.ToPtr("sha256:def456"),
 			},
 			location: "us-central1",
 			want:     "https://us-central1-docker.pkg.dev/my-project/my-repo/namespace/my-image@sha256:def456",
@@ -61,42 +63,42 @@ func TestArtifactReference_ToResourceURL(t *testing.T) {
 
 func TestArtifactReference_String(t *testing.T) {
 	tests := map[string]struct {
-		artifact ArtifactReference
+		artifact schemas.ArtifactReference
 		want     string
 	}{
 		"should format with digest only": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
-				Digest:       drydock.ToPtr("sha256:abc123"),
+				Digest:       utils.ToPtr("sha256:abc123"),
 			},
 			want: "us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:abc123",
 		},
 		"should format with tag only": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
-				Tag:          drydock.ToPtr("latest"),
+				Tag:          utils.ToPtr("latest"),
 			},
 			want: "us-central1-docker.pkg.dev/my-project/my-repo/my-image:latest",
 		},
 		"should format with tag and digest": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
-				Tag:          drydock.ToPtr("v1.0.0"),
-				Digest:       drydock.ToPtr("sha256:abc123"),
+				Tag:          utils.ToPtr("v1.0.0"),
+				Digest:       utils.ToPtr("sha256:abc123"),
 			},
 			want: "us-central1-docker.pkg.dev/my-project/my-repo/my-image:v1.0.0@sha256:abc123",
 		},
 		"should format with neither tag nor digest": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
@@ -105,12 +107,12 @@ func TestArtifactReference_String(t *testing.T) {
 			want: "us-central1-docker.pkg.dev/my-project/my-repo/my-image",
 		},
 		"should handle nested image name": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "asia-northeast1-docker.pkg.dev",
 				ProjectID:    "test-project",
 				RepositoryID: "test-repo",
 				ImageName:    "namespace/service/worker",
-				Tag:          drydock.ToPtr("prod"),
+				Tag:          utils.ToPtr("prod"),
 			},
 			want: "asia-northeast1-docker.pkg.dev/test-project/test-repo/namespace/service/worker:prod",
 		},
@@ -128,21 +130,21 @@ func TestArtifactReference_String(t *testing.T) {
 
 func TestArtifactReference_MarshalJSON(t *testing.T) {
 	tests := map[string]struct {
-		artifact ArtifactReference
+		artifact schemas.ArtifactReference
 		want     string
 	}{
 		"should include uri field in JSON": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
-				Digest:       drydock.ToPtr("sha256:abc123"),
+				Digest:       utils.ToPtr("sha256:abc123"),
 			},
 			want: `{"host":"us-central1-docker.pkg.dev","projectID":"my-project","repositoryID":"my-repo","imageName":"my-image","digest":"sha256:abc123","uri":"us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:abc123"}`,
 		},
 		"should omit nil tag and digest": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
@@ -151,13 +153,13 @@ func TestArtifactReference_MarshalJSON(t *testing.T) {
 			want: `{"host":"us-central1-docker.pkg.dev","projectID":"my-project","repositoryID":"my-repo","imageName":"my-image","uri":"us-central1-docker.pkg.dev/my-project/my-repo/my-image"}`,
 		},
 		"should include tag when present": {
-			artifact: ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
-				Tag:          drydock.ToPtr("latest"),
-				Digest:       drydock.ToPtr("sha256:abc123"),
+				Tag:          utils.ToPtr("latest"),
+				Digest:       utils.ToPtr("sha256:abc123"),
 			},
 			want: `{"host":"us-central1-docker.pkg.dev","projectID":"my-project","repositoryID":"my-repo","imageName":"my-image","tag":"latest","digest":"sha256:abc123","uri":"us-central1-docker.pkg.dev/my-project/my-repo/my-image:latest@sha256:abc123"}`,
 		},
@@ -181,24 +183,24 @@ func TestArtifactReference_MarshalJSON(t *testing.T) {
 // so we test cases with only Tag or only Digest.
 func TestArtifactReference_StringRoundTrip(t *testing.T) {
 	tests := map[string]struct {
-		artifact drydock.ArtifactReference
+		artifact schemas.ArtifactReference
 	}{
 		"should round-trip with digest only": {
-			artifact: drydock.ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "us-central1-docker.pkg.dev",
 				ProjectID:    "my-project",
 				RepositoryID: "my-repo",
 				ImageName:    "my-image",
-				Digest:       drydock.ToPtr("sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
+				Digest:       utils.ToPtr("sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
 			},
 		},
 		"should round-trip with tag only": {
-			artifact: drydock.ArtifactReference{
+			artifact: schemas.ArtifactReference{
 				Host:         "asia-northeast1-docker.pkg.dev",
 				ProjectID:    "test-project",
 				RepositoryID: "test-repo",
 				ImageName:    "nginx",
-				Tag:          drydock.ToPtr("latest"),
+				Tag:          utils.ToPtr("latest"),
 			},
 		},
 	}
@@ -216,6 +218,3 @@ func TestArtifactReference_StringRoundTrip(t *testing.T) {
 		})
 	}
 }
-
-// Type alias for test readability
-type ArtifactReference = drydock.ArtifactReference

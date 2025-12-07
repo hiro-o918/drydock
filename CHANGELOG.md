@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.2.0](https://github.com/hiro-o918/drydock/compare/v0.1.0...v0.2.0) (2025-12-07)
+
+
+### Features
+
+* add --fixable-only flag to filter vulnerabilities with available ([89f19c8](https://github.com/hiro-o918/drydock/commit/89f19c846e5a5d85cde7a55ec1a8dd76dfb58bf9))
+* Add concurrency support for container image scanning ([e12ed29](https://github.com/hiro-o918/drydock/commit/e12ed290cc3c6dc5f05fec5588d20d2bbfd32748))
+* Add concurrency support for image scanning ([cae5c1d](https://github.com/hiro-o918/drydock/commit/cae5c1dd00540836ef0019c3504cd58a5d4f96ad))
+* Add filter for fixable vulnerabilities only ([ffd83f8](https://github.com/hiro-o918/drydock/commit/ffd83f8ec2d1749af35d11fe6d064740f4a56fdf))
+* Add fixable filter to ArtifactRegistryAnalyzer ([bacdb67](https://github.com/hiro-o918/drydock/commit/bacdb67cca74b60da33c95b4c5e3b2f6aa378ff4))
+
+
+### Bug Fixes
+
+* get tag for resolved image targets if available ([1769703](https://github.com/hiro-o918/drydock/commit/17697035dccd5a1bb62feeb052c5d8b90babcdfe))
+* get tag for resolved image targets if available ([07ad326](https://github.com/hiro-o918/drydock/commit/07ad326dd4bb9f74d4c069e4330b659eec9958be))
+* set default GCP project ID from environment in Drydock scanner ([0950230](https://github.com/hiro-o918/drydock/commit/09502306a5b83b306da39d9baa56185d13a6e64c))
+* set default GCP project ID from environment in Drydock scanner ([f37d7b6](https://github.com/hiro-o918/drydock/commit/f37d7b65f2d31a46a7191664bef7df8145663cd0))
+
+
+### Documentation
+
+* add concurrency option and clarify project ID usage in README ([a7ba306](https://github.com/hiro-o918/drydock/commit/a7ba306a999795ff7cb3449c4076e38a96fd1540))
+* Add fixable filter to README examples ([4e943e9](https://github.com/hiro-o918/drydock/commit/4e943e9e509d8844bc4d1c72727e54ecceb5920e))
+* add top icon ([62252ae](https://github.com/hiro-o918/drydock/commit/62252aef030af21e9a835bf5818fd49b40bef844))
+
+
+### Miscellaneous
+
+* Add debug logging for vulnerability severity filtering ([6be9001](https://github.com/hiro-o918/drydock/commit/6be90019e86106fb66f52c5bb81ee573add4e1ce))
+
 ## [0.1.0](https://github.com/hiro-o918/drydock/compare/v0.0.2...v0.1.0) (2025-12-07)
 
 

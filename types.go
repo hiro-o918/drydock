@@ -2,7 +2,6 @@ package drydock
 
 import (
 	"context"
-	"io"
 	"time"
 )
 
@@ -114,54 +113,11 @@ type AnalyzeResult struct {
 // Exporter defines the interface for exporting analysis results
 type Exporter interface {
 	// Export outputs the analysis results to the configured destination
-	Export(ctx context.Context, result *AnalyzeResult) error
+	Export(ctx context.Context, results []AnalyzeResult) error
 }
 
-// JSONExporter exports results as JSON format
-type JSONExporter struct {
-	// Writer is the output destination (e.g., os.Stdout, file)
-	Writer io.Writer
+type OutputFormat string
 
-	// Pretty determines whether to use indented formatting
-	Pretty bool
-}
-
-// CSVExporter exports results as CSV format
-type CSVExporter struct {
-	// Writer is the output destination
-	Writer io.Writer
-
-	// IncludeHeader determines whether to include CSV header row
-	IncludeHeader bool
-}
-
-// TableExporter exports results as formatted table (for terminal output)
-type TableExporter struct {
-	// Writer is the output destination
-	Writer io.Writer
-
-	// ColorOutput enables colored output
-	ColorOutput bool
-}
-
-// GCSExporter exports results to Google Cloud Storage
-type GCSExporter struct {
-	// BucketName is the GCS bucket name
-	BucketName string
-
-	// ObjectPath is the path within the bucket
-	ObjectPath string
-
-	// Format specifies the file format (json, csv, etc.)
-	Format string
-}
-
-// ============================================================================
-// CLI Component
-// ============================================================================
-
-// Runner represents the main CLI execution interface
-type Runner interface {
-	// Run executes the CLI with the given arguments
-	Run(args []string) error
-}
+const (
+	OutputFormatJSON OutputFormat = "json"
+)

@@ -39,14 +39,16 @@ func TestIsDigest(t *testing.T) {
 
 func TestParseDigestFromURI(t *testing.T) {
 	tests := map[string]struct {
-		input   string
-		want    string
-		wantErr bool
+		input         string
+		wantImageName string
+		wantDigest    string
+		wantErr       bool
 	}{
 		"should extract digest when uri format is valid": {
-			input:   "us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:123456789abcdef",
-			want:    "sha256:123456789abcdef",
-			wantErr: false,
+			input:         "us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:123456789abcdef",
+			wantImageName: "us-central1-docker.pkg.dev/my-project/my-repo/my-image",
+			wantDigest:    "sha256:123456789abcdef",
+			wantErr:       false,
 		},
 		"should fail when separator @ is missing": {
 			input:   "us-central1-docker.pkg.dev/my-project/my-repo/my-image:latest",
@@ -60,16 +62,17 @@ func TestParseDigestFromURI(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, err := drydock.ExportParseDigestFromURI(tt.input)
+			gotImageName, gotDigest, err := drydock.ExportParseDigestFromURI(tt.input)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseDigestFromURI() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				if diff := cmp.Diff(tt.want, got); diff != "" {
-					t.Errorf("ParseDigestFromURI() mismatch (-want +got):\n%s", diff)
-				}
+			if gotImageName != tt.wantImageName {
+				t.Errorf("ParseDigestFromURI() gotImageName = %v, want %v", gotImageName, tt.wantImageName)
+			}
+			if gotDigest != tt.wantDigest {
+				t.Errorf("ParseDigestFromURI() gotDigest = %v, want %v", gotDigest, tt.wantDigest)
 			}
 		})
 	}
@@ -127,6 +130,47 @@ func TestSelectBestDigest(t *testing.T) {
 			// cmp.Diff handles deep comparison including time.Time
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("SelectBestDigest() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestExtractLocationAndRepository(t *testing.T) {
+	tests := map[string]struct {
+		input        string
+		wantLocation string
+		wantRepo     string
+	}{
+		"should extract location and repository when repo name format is valid": {
+			input:        "projects/my-project/locations/us-central1/repositories/my-repo",
+			wantLocation: "us-central1",
+			wantRepo:     "my-repo",
+		},
+		"should handle asia-northeast1 location": {
+			input:        "projects/test/locations/asia-northeast1/repositories/test-repo",
+			wantLocation: "asia-northeast1",
+			wantRepo:     "test-repo",
+		},
+		"should return empty strings when format is invalid": {
+			input:        "invalid",
+			wantLocation: "",
+			wantRepo:     "",
+		},
+		"should return empty strings when parts are insufficient": {
+			input:        "projects/my-project/locations/us-central1",
+			wantLocation: "",
+			wantRepo:     "",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			gotLocation, gotRepo := drydock.ExportExtractLocationAndRepository(tt.input)
+			if gotLocation != tt.wantLocation {
+				t.Errorf("ExtractLocationAndRepository() location = %v, want %v", gotLocation, tt.wantLocation)
+			}
+			if gotRepo != tt.wantRepo {
+				t.Errorf("ExtractLocationAndRepository() repo = %v, want %v", gotRepo, tt.wantRepo)
 			}
 		})
 	}

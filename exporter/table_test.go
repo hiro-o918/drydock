@@ -36,7 +36,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 				results: []schemas.AnalyzeResult{},
 			},
 			want: [][]string{
-				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
+				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Type", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
 			},
 		},
 		"should format standard vulnerability data correctly": {
@@ -67,7 +67,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 				},
 			},
 			want: [][]string{
-				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
+				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Type", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
 				{
 					fixedTimeStr,
 					"asia.gcr.io",
@@ -79,6 +79,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 					"CVE-2023-9999",
 					"HIGH",
 					"8.5",
+					"",
 					"openssl",
 					"1.1.1",
 					"1.1.2",
@@ -106,9 +107,9 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 				},
 			},
 			want: [][]string{
-				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
-				{fixedTimeStr, "gcr.io", "p", "r", "multi", "", "", "CVE-1", "LOW", "0.0", "", "", "", "", ""},
-				{fixedTimeStr, "gcr.io", "p", "r", "multi", "", "", "CVE-2", "MEDIUM", "0.0", "", "", "", "", ""},
+				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Type", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
+				{fixedTimeStr, "gcr.io", "p", "r", "multi", "", "", "CVE-1", "LOW", "0.0", "", "", "", "", "", ""},
+				{fixedTimeStr, "gcr.io", "p", "r", "multi", "", "", "CVE-2", "MEDIUM", "0.0", "", "", "", "", "", ""},
 			},
 		},
 		"should handle special characters (CSV escaping)": {
@@ -133,7 +134,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 				},
 			},
 			want: [][]string{
-				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
+				{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Type", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
 				{
 					fixedTimeStr,
 					"pkg.dev",
@@ -145,6 +146,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 					"CVE-ESC",
 					"",    // Unspecified severity
 					"0.0", // Zero score
+					"",    // Package Type
 					"", "", "",
 					"Line 1\nLine 2, with \"quotes\"", // CSV reader automatically handles unescaping
 					"",
@@ -191,8 +193,8 @@ func TestTableExporter_Export_TSV(t *testing.T) {
 	}
 
 	want := [][]string{
-		{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
-		{fixedTimeStr, "h", "p", "r", "i", "", "", "CVE-TSV", "CRITICAL", "0.0", "", "", "", "", ""},
+		{"Scan Time", "Host", "Project ID", "Repository ID", "Image Name", "Tag", "Digest", "Vulnerability ID", "Severity", "CVSS Score", "Package Type", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
+		{fixedTimeStr, "h", "p", "r", "i", "", "", "CVE-TSV", "CRITICAL", "0.0", "", "", "", "", "", ""},
 	}
 
 	out := &bytes.Buffer{}

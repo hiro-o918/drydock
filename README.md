@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="docs/assets/banner.png" alt="Drydock Banner" width="100%">
+</div>
+
 # Drydock
 
 **A lightweight CLI to audit container vulnerabilities in Google Cloud Artifact Registry.**

@@ -32,3 +32,5 @@ go.work.sum
 # .vscode/
 
 drydock
+# Added by goreleaser init:
+dist/

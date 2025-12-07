@@ -186,20 +186,17 @@ func executeScan(
 		count++
 
 		// 2. Analyze Target
-		log.Debug().Str("image", target.ImageName).Msg("Analyzing image")
+		log.Debug().Str("image", target.Artifact.ImageName).Msg("Analyzing image")
 
 		req := drydock.AnalyzeRequest{
-			ProjectID:   cfg.ProjectID,
+			Artifact:    target.Artifact,
 			Location:    target.Location,
-			Repository:  target.Repository,
-			Image:       target.ImageName,
-			Digest:      target.Digest,
 			MinSeverity: minSeverity,
 		}
 
 		result, err := analyzer.Analyze(ctx, req)
 		if err != nil {
-			log.Warn().Err(err).Str("image", target.ImageName).Msg("Analysis failed")
+			log.Warn().Err(err).Str("image", target.Artifact.ImageName).Msg("Analysis failed")
 			scanErrs = errors.Join(scanErrs, fmt.Errorf("analyzing %s: %w", target.URI, err))
 			continue
 		}

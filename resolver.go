@@ -29,11 +29,9 @@ type ImageResolver struct {
 
 // ImageTarget represents a resolved target for scanning.
 type ImageTarget struct {
-	ImageName  string // e.g., "my-app"
-	Digest     string // e.g., "sha256:..."
-	URI        string // Full resource URI
-	Repository string // e.g., "my-repo"
-	Location   string // e.g., "us-central1"
+	Artifact ArtifactReference // Structured image reference
+	URI      string            // Original API response URI (for debugging)
+	Location string            // GCP location (e.g., "us-central1")
 }
 
 // candidateImage is an internal struct used for selection logic.
@@ -167,6 +165,13 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 	for name, candidates := range grouped {
 		best := selectBestDigest(name, location, repository, candidates)
 		if best.Digest != "" {
+			// Parse the URI to get ArtifactReference
+			artifactRef, err := ParseArtifactURI(best.URI)
+			if err != nil {
+				log.Warn().Err(err).Str("uri", best.URI).Msg("Failed to parse URI, skipping image")
+				continue
+			}
+
 			log.Debug().
 				Str("location", location).
 				Str("repository", repository).
@@ -176,11 +181,9 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 				Msg("Resolved image target")
 
 			results = append(results, ImageTarget{
-				ImageName:  name,
-				Digest:     best.Digest,
-				URI:        best.URI,
-				Repository: repository,
-				Location:   location,
+				Artifact: artifactRef,
+				URI:      best.URI,
+				Location: location,
 			})
 		}
 	}

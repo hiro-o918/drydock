@@ -46,7 +46,12 @@ func (e *TableExporter) Export(ctx context.Context, results []schemas.AnalyzeRes
 	// 1. Write Header
 	header := []string{
 		"Scan Time",
-		"Image URI",
+		"Host",
+		"Project ID",
+		"Repository ID",
+		"Image Name",
+		"Tag",
+		"Digest",
 		"Vulnerability ID",
 		"Severity",
 		"CVSS Score",
@@ -64,12 +69,11 @@ func (e *TableExporter) Export(ctx context.Context, results []schemas.AnalyzeRes
 	// 2. Write Data Rows
 	for _, result := range results {
 		// Pre-calculate shared fields for this artifact
-		imageURI := result.Artifact.String()
 		scanTime := result.ScanTime.Format(time.RFC3339)
 
 		for _, v := range result.Vulnerabilities {
 			// Use the shared logic to build the row
-			record := buildRecord(scanTime, imageURI, v)
+			record := buildRecord(scanTime, result.Artifact, v)
 
 			if err := e.writer.Write(record); err != nil {
 				return fmt.Errorf("failed to write record for %s: %w", v.ID, err)
@@ -87,7 +91,18 @@ func (e *TableExporter) Export(ctx context.Context, results []schemas.AnalyzeRes
 
 // buildRecord centralizes the logic of converting a single vulnerability into a row of strings.
 // This ensures CSV and TSV always output the same data structure.
-func buildRecord(scanTime, imageURI string, v schemas.Vulnerability) []string {
+func buildRecord(scanTime string, artifact schemas.ArtifactReference, v schemas.Vulnerability) []string {
+	// Extract Tag and Digest with nil-safe handling
+	tag := ""
+	if artifact.Tag != nil {
+		tag = *artifact.Tag
+	}
+
+	digest := ""
+	if artifact.Digest != nil {
+		digest = *artifact.Digest
+	}
+
 	// Handle URL logic (pick first or empty)
 	urlStr := ""
 	if len(v.URLs) > 0 {
@@ -100,7 +115,12 @@ func buildRecord(scanTime, imageURI string, v schemas.Vulnerability) []string {
 
 	return []string{
 		scanTime,
-		imageURI,
+		artifact.Host,
+		artifact.ProjectID,
+		artifact.RepositoryID,
+		artifact.ImageName,
+		tag,
+		digest,
 		v.ID,
 		string(v.Severity),
 		fmt.Sprintf("%.1f", v.CVSSScore),

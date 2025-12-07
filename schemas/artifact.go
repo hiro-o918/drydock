@@ -55,14 +55,14 @@ func (a ArtifactReference) MarshalJSON() ([]byte, error) {
 // AnalyzeResult contains the analysis results
 type AnalyzeResult struct {
 	// Artifact is the analyzed image reference
-	Artifact ArtifactReference
+	Artifact ArtifactReference `json:"artifact" yaml:"artifact"`
 
 	// ScanTime is when the scan was performed
-	ScanTime time.Time
+	ScanTime time.Time `json:"scanTime" yaml:"scanTime"`
 
 	// Vulnerabilities is the list of found vulnerabilities
-	Vulnerabilities []Vulnerability
+	Vulnerabilities []Vulnerability `json:"vulnerabilities" yaml:"vulnerabilities"`
 
 	// Summary provides aggregated statistics
-	Summary VulnerabilitySummary
+	Summary VulnerabilitySummary `json:"summary" yaml:"summary"`
 }

@@ -86,27 +86,40 @@ func convertToVulnerability(occ *grafeaspb.Occurrence) (schemas.Vulnerability, e
 		return schemas.Vulnerability{}, fmt.Errorf("occurrence does not contain vulnerability details")
 	}
 
-	vuln := schemas.Vulnerability{
-		ID:        vulnDetails.ShortDescription,
-		Severity:  convertSeverity(vulnDetails.Severity),
-		CVSSScore: vulnDetails.CvssScore,
-		URLs:      convertUrls(vulnDetails.GetRelatedUrls()),
-		// Using NoteName as a fallback for description/identifier
-		Description: occ.NoteName,
-	}
+	// Initialize variables for package details
+	var pkgName string
+	var installedVer string
+	var fixedVer string
+	var packageType string
 
-	// Extract package issues (current standard field)
+	// Extract details from PackageIssue
+	// We primarily use the first issue found to determine package metadata.
 	if issues := vulnDetails.GetPackageIssue(); len(issues) > 0 {
 		issue := issues[0]
-		vuln.PackageName = issue.AffectedPackage
+		pkgName = issue.AffectedPackage
+
+		// 1. Extract the specific 'package_type' (e.g., "OS", "GO", "MAVEN") if available.
+		packageType = issue.GetPackageType()
 
 		if ver := issue.AffectedVersion; ver != nil {
-			vuln.InstalledVersion = fmt.Sprintf("%s (Kind: %s)", ver.Name, ver.Kind)
+			installedVer = fmt.Sprintf("%s (Kind: %s)", ver.Name, ver.Kind)
 		}
 
 		if fixed := issue.FixedVersion; fixed != nil {
-			vuln.FixedVersion = fixed.Name
+			fixedVer = fixed.Name
 		}
+	}
+
+	vuln := schemas.Vulnerability{
+		ID:               vulnDetails.ShortDescription,
+		Severity:         convertSeverity(vulnDetails.Severity),
+		CVSSScore:        vulnDetails.CvssScore,
+		URLs:             convertUrls(vulnDetails.GetRelatedUrls()),
+		Description:      occ.NoteName, // Using NoteName as a fallback for description/identifier
+		PackageType:      packageType,
+		PackageName:      pkgName,
+		InstalledVersion: installedVer,
+		FixedVersion:     fixedVer,
 	}
 
 	return vuln, nil

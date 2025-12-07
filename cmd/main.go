@@ -10,7 +10,6 @@ import (
 	"os/signal"
 
 	"github.com/hiro-o918/drydock"
-	"github.com/hiro-o918/drydock/schemas"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/api/option"
 )
@@ -85,73 +84,22 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 
 	// 4. Execution Phase
 	log.Info().Msg("Starting vulnerability scan...")
-	return executeScan(ctx, cfg, resolver, analyzer, resultExporter)
-}
-
-// executeScan contains the core business logic pipeline.
-func executeScan(
-	ctx context.Context,
-	cfg *Config,
-	resolver *drydock.ImageResolver,
-	analyzer *drydock.ArtifactRegistryAnalyzer,
-	exp drydock.Exporter,
-) error {
+	scanner := drydock.NewScanner(
+		cfg.Location,
+		cfg.ProjectID,
+		resolver,
+		analyzer,
+		resultExporter,
+	)
 	minSeverity, err := parseSeverity(cfg.MinSeverity)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid minimum severity: %w", err)
 	}
 
-	results := make([]schemas.AnalyzeResult, 0)
-	var scanErrs error
-
-	log.Debug().Msg("Resolving images from Artifact Registry...")
-
-	count := 0
-	// 1. Resolve Targets
-	for target, err := range resolver.AllLatestImages(ctx, cfg.ProjectID, cfg.Location) {
-		if err != nil {
-			log.Warn().Err(err).Msg("Error occurred during image resolution stream")
-			scanErrs = errors.Join(scanErrs, fmt.Errorf("resolving image stream: %w", err))
-			continue
-		}
-		count++
-
-		// 2. Analyze Target
-		log.Debug().Str("image", target.Artifact.ImageName).Msg("Analyzing image")
-
-		req := drydock.AnalyzeRequest{
-			Artifact:    target.Artifact,
-			Location:    target.Location,
-			MinSeverity: minSeverity,
-		}
-
-		result, err := analyzer.Analyze(ctx, req)
-		if err != nil {
-			log.Warn().Err(err).Str("image", target.Artifact.ImageName).Msg("Analysis failed")
-			scanErrs = errors.Join(scanErrs, fmt.Errorf("analyzing %s: %w", target.URI, err))
-			continue
-		}
-
-		results = append(results, *result)
+	if err := scanner.Scan(ctx, minSeverity); err != nil {
+		return fmt.Errorf("scan failed: %w", err)
 	}
 
-	log.Info().Int("targets_found", count).Int("scanned_successfully", len(results)).Msg("Scan phase completed")
-
-	// 3. Export Results
-	if len(results) > 0 {
-		log.Info().Msg("Exporting results to stdout...")
-		if err := exp.Export(ctx, results); err != nil {
-			return fmt.Errorf("failed to export results: %w", err)
-		}
-	} else {
-		log.Warn().Msg("No vulnerabilities found or no images scanned.")
-	}
-
-	// 4. Report Partial Errors
-	if scanErrs != nil {
-		return fmt.Errorf("scan completed with partial errors:\n%w", scanErrs)
-	}
-
-	log.Info().Msg("Done")
+	log.Info().Msg("Vulnerability scan completed successfully")
 	return nil
 }

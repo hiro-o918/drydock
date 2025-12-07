@@ -10,7 +10,6 @@ import (
 	"os/signal"
 
 	"github.com/hiro-o918/drydock"
-	"github.com/hiro-o918/drydock/exporter"
 	"github.com/hiro-o918/drydock/schemas"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/api/option"
@@ -32,6 +31,9 @@ func main() {
 
 // run orchestrates the application components.
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	// Preliminary Logger Setup (in case of early errors)
+	setupGlobalLogger(stderr, false)
+
 	// 1. Parse Configuration
 	cfg, err := parseFlags(args, stderr)
 	if err != nil {
@@ -76,7 +78,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}()
 
 	// Initialize Exporter (Output to stdout)
-	resultExporter := exporter.NewJSONExporter(stdout)
+	resultExporter, err := drydock.NewExporter(cfg.OutputFormat, stdout)
+	if err != nil {
+		return fmt.Errorf("failed to initialize exporter: %w", err)
+	}
 
 	// 4. Execution Phase
 	log.Info().Msg("Starting vulnerability scan...")

@@ -7,15 +7,17 @@ import (
 	"io"
 	"strings"
 
+	"github.com/hiro-o918/drydock"
 	"github.com/hiro-o918/drydock/schemas"
 )
 
 // Config holds the application configuration.
 type Config struct {
-	ProjectID   string
-	Location    string
-	MinSeverity string
-	Debug       bool
+	ProjectID    string
+	Location     string
+	MinSeverity  string
+	OutputFormat drydock.OutputFormat
+	Debug        bool
 }
 
 // Validate checks if the configuration is valid.
@@ -26,25 +28,31 @@ func (c *Config) Validate() error {
 	if c.Location == "" {
 		return errors.New("flag -location is required")
 	}
+	// OutputFormat validation is handled during flag parsing, so it's not needed here.
 	return nil
 }
 
 // parseFlags handles CLI argument parsing and returns a validated Config.
 func parseFlags(args []string, stderr io.Writer) (*Config, error) {
+	if len(args) == 0 {
+		args = []string{"-h"}
+	}
 	fs := flag.NewFlagSet("drydock", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
-	cfg := &Config{}
+	cfg := &Config{
+		// Set default values here
+		OutputFormat: drydock.OutputFormatJSON,
+	}
+
 	fs.StringVar(&cfg.ProjectID, "project", "", "GCP project ID (required)")
 	fs.StringVar(&cfg.Location, "location", "", "Artifact Registry location (required)")
-	fs.StringVar(&cfg.MinSeverity, "min-severity", "HIGH", "Minimum severity level (MINIMAL, LOW, MEDIUM, HIGH, CRITICAL)")
+	fs.StringVar(&cfg.MinSeverity, "min-severity", "HIGH", "Minimum severity level")
+	fs.Var(&cfg.OutputFormat, "output-format", "Output format (json, csv, tsv)")
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug logging")
 
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Drydock - Artifact Registry Vulnerability Scanner")
-		_, _ = fmt.Fprintln(stderr, "\nUsage:")
-		_, _ = fmt.Fprintln(stderr, "  drydock -project <ID> -location <REGION> [options]")
-		_, _ = fmt.Fprintln(stderr, "\nOptions:")
 		fs.PrintDefaults()
 	}
 
@@ -59,6 +67,7 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 
 	return cfg, nil
 }
+
 func parseSeverity(s string) (schemas.Severity, error) {
 	s = strings.ToUpper(strings.TrimSpace(s))
 	switch s {

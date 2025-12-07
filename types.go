@@ -2,6 +2,8 @@ package drydock
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/hiro-o918/drydock/schemas"
 )
@@ -39,6 +41,24 @@ const (
 	OutputFormatCSV  OutputFormat = "csv"
 	OutputFormatTSV  OutputFormat = "tsv"
 )
+
+// String implements the flag.Value interface.
+func (f *OutputFormat) String() string {
+	return string(*f)
+}
+
+// Set implements the flag.Value interface.
+// ここでパース時にバリデーションが行われます。
+func (f *OutputFormat) Set(value string) error {
+	normalized := OutputFormat(strings.ToLower(strings.TrimSpace(value)))
+	switch normalized {
+	case OutputFormatJSON, OutputFormatCSV, OutputFormatTSV:
+		*f = normalized
+		return nil
+	default:
+		return fmt.Errorf("invalid output format: %s (allowed: json, csv, tsv)", value)
+	}
+}
 
 // Exporter defines the interface for exporting analysis results
 type Exporter interface {

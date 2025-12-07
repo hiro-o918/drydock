@@ -16,6 +16,7 @@ type Config struct {
 	ProjectID    string
 	Location     string
 	MinSeverity  string
+	FixableOnly  bool
 	OutputFormat drydock.OutputFormat
 	Concurrency  uint8
 	Debug        bool
@@ -54,6 +55,9 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 	// --min-severity / -s
 	fs.StringVar(&cfg.MinSeverity, "min-severity", "HIGH", "Minimum severity level")
 	fs.StringVar(&cfg.MinSeverity, "s", "HIGH", "Severity (alias for --min-severity)")
+
+	// --fixable-only / -f
+	fs.BoolVar(&cfg.FixableOnly, "fixable", false, "Only show vulnerabilities that have a fix available")
 
 	// --output-format / -o
 	fs.Var(&cfg.OutputFormat, "output-format", "Output format (json, csv, tsv)")

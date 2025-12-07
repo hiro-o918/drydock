@@ -28,6 +28,9 @@ type AnalyzeRequest struct {
 
 	// MinSeverity filters vulnerabilities by minimum severity
 	MinSeverity schemas.Severity
+
+	// FixableOnly filters for vulnerabilities that have a fix available
+	FixableOnly bool
 }
 
 // ============================================================================

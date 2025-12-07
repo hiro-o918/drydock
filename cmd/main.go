@@ -110,7 +110,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("invalid minimum severity: %w", err)
 	}
 
-	if err := scanner.Scan(ctx, minSeverity); err != nil {
+	if err := scanner.Scan(ctx, minSeverity, cfg.FixableOnly); err != nil {
 		return fmt.Errorf("scan failed: %w", err)
 	}
 

@@ -127,6 +127,57 @@ func TestFilterBySeverity(t *testing.T) {
 	}
 }
 
+func TestFilterFixable(t *testing.T) {
+	tests := map[string]struct {
+		input []schemas.Vulnerability
+		want  []schemas.Vulnerability
+	}{
+		"should return only fixable vulnerabilities": {
+			input: []schemas.Vulnerability{
+				{ID: "CVE-1", FixedVersion: "1.0.0"},
+				{ID: "CVE-2", FixedVersion: ""},
+				{ID: "CVE-3", FixedVersion: "2.0.0"},
+				{ID: "CVE-4", FixedVersion: ""},
+			},
+			want: []schemas.Vulnerability{
+				{ID: "CVE-1", FixedVersion: "1.0.0"},
+				{ID: "CVE-3", FixedVersion: "2.0.0"},
+			},
+		},
+		"should return empty list when no vulnerabilities have fixes": {
+			input: []schemas.Vulnerability{
+				{ID: "CVE-1", FixedVersion: ""},
+				{ID: "CVE-2", FixedVersion: ""},
+			},
+			want: []schemas.Vulnerability{},
+		},
+		"should return all vulnerabilities when all have fixes": {
+			input: []schemas.Vulnerability{
+				{ID: "CVE-1", FixedVersion: "1.0.0"},
+				{ID: "CVE-2", FixedVersion: "2.0.0"},
+			},
+			want: []schemas.Vulnerability{
+				{ID: "CVE-1", FixedVersion: "1.0.0"},
+				{ID: "CVE-2", FixedVersion: "2.0.0"},
+			},
+		},
+		"should return empty list when input is empty": {
+			input: []schemas.Vulnerability{},
+			want:  []schemas.Vulnerability{},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := drydock.ExportFilterFixable(tt.input)
+
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("FilterFixable() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestBuildSummary(t *testing.T) {
 	tests := map[string]struct {
 		input []schemas.Vulnerability

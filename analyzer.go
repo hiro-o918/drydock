@@ -71,6 +71,11 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 
 	filtered := filterBySeverity(vulnerabilities, req.MinSeverity)
 
+	// Filter by fixability if requested
+	if req.FixableOnly {
+		filtered = filterFixable(filtered)
+	}
+
 	return &schemas.AnalyzeResult{
 		Artifact:        req.Artifact,
 		ScanTime:        time.Now(),
@@ -176,6 +181,18 @@ func filterBySeverity(vulns []schemas.Vulnerability, min schemas.Severity) []sch
 			filtered = append(filtered, v)
 		}
 	}
+	return filtered
+}
+
+func filterFixable(vulns []schemas.Vulnerability) []schemas.Vulnerability {
+	filtered := make([]schemas.Vulnerability, 0)
+
+	for _, v := range vulns {
+		if v.FixedVersion != "" {
+			filtered = append(filtered, v)
+		}
+	}
+
 	return filtered
 }
 

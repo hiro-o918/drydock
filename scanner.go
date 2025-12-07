@@ -96,7 +96,7 @@ func (c *scanCollector) addError(err error) {
 }
 
 // Scan iterates over images, analyzes them concurrently, and exports the results.
-func (s *Scanner) Scan(ctx context.Context, minSeverity schemas.Severity) error {
+func (s *Scanner) Scan(ctx context.Context, minSeverity schemas.Severity, fixableOnly bool) error {
 	log.Debug().Msg("Resolving images from Artifact Registry...")
 
 	collector := &scanCollector{
@@ -127,7 +127,7 @@ func (s *Scanner) Scan(ctx context.Context, minSeverity schemas.Severity) error 
 			defer wg.Done()
 			defer func() { <-sem }() // Release semaphore
 
-			s.analyzeTarget(ctx, t, minSeverity, collector)
+			s.analyzeTarget(ctx, t, minSeverity, fixableOnly, collector)
 		}(target)
 	}
 
@@ -163,6 +163,7 @@ func (s *Scanner) analyzeTarget(
 	ctx context.Context,
 	target ImageTarget,
 	minSeverity schemas.Severity,
+	fixableOnly bool,
 	collector *scanCollector,
 ) {
 	log.Debug().Str("image", target.Artifact.ImageName).Msg("Analyzing image")
@@ -171,6 +172,7 @@ func (s *Scanner) analyzeTarget(
 		Artifact:    target.Artifact,
 		Location:    target.Location,
 		MinSeverity: minSeverity,
+		FixableOnly: fixableOnly,
 	}
 
 	result, err := s.analyzer.Analyze(ctx, req)

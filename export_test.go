@@ -4,6 +4,7 @@ package drydock
 var (
 	ExportConvertToVulnerability       = convertToVulnerability
 	ExportFilterBySeverity             = filterBySeverity
+	ExportFilterFixable                = filterFixable
 	ExportBuildSummary                 = buildSummary
 	ExportSelectBestDigest             = selectBestDigest
 	ExportExtractLocationAndRepository = extractLocationAndRepository

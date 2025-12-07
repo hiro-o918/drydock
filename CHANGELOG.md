@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.0](https://github.com/hiro-o918/drydock/compare/v0.0.2...v0.1.0) (2025-12-07)
+
+
+### Features
+
+* Add install script for drydock ([81ef425](https://github.com/hiro-o918/drydock/commit/81ef42552e3d53787f5b1d4e1bae443812c70de8))
+* add package type to result ([a199b5e](https://github.com/hiro-o918/drydock/commit/a199b5ee4bc5d2f0d4c34c70af1e93f06c1ed995))
+* add PackageType to vulnerability schema and export ([289420f](https://github.com/hiro-o918/drydock/commit/289420f93a2eec7d746ac92f5d1f9898936735c5))
+
+
+### Documentation
+
+* add installation and usage ([6d28202](https://github.com/hiro-o918/drydock/commit/6d282027c35b96ea74756b4f4f77f22df080ba3b))
+* add installation and usage instructions to README.md ([5587e6f](https://github.com/hiro-o918/drydock/commit/5587e6f26d65b94c8d52f9bd924e35eb84ab29b2))
+
 ## [0.0.2](https://github.com/hiro-o918/drydock/compare/v0.1.0...v0.0.2) (2025-12-07)
 
 

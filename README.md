@@ -41,7 +41,8 @@ You can also download the pre-built binary from the [Releases page](https://gith
 
 ### Quick Start
 
-Scan a location for **HIGH** and **CRITICAL** vulnerabilities (default behavior).
+Scan a location for **HIGH** and **CRITICAL** vulnerabilities.
+(The project ID is automatically inferred from your local `gcloud` configuration or environment variables.)
 
 ```bash
 drydock -l us-central1
@@ -49,14 +50,21 @@ drydock -l us-central1
 
 ### Common Scenarios
 
-**1. Find CRITICAL vulnerabilities only**
+**1. Specify a Project ID (Recommended)**
+Explicitly define the project to avoid ambiguity.
+
+```bash
+drydock -p my-project-id -l us-central1
+```
+
+**2. Find CRITICAL vulnerabilities only**
 Focus on the most urgent threats.
 
 ```bash
 drydock -l us-central1 -s CRITICAL
 ```
 
-**2. Export report to CSV**
+**3. Export report to CSV**
 Generate a spreadsheet-compatible file for reporting.
 
 ```bash
@@ -65,13 +73,13 @@ drydock -l us-central1 -o csv > report.csv
 
 ### Options
 
-| Flag             | Description                                                     | Default |
-| :--------------- | :-------------------------------------------------------------- | :------ |
-| `-l`, `--location`      | **(Required)** Artifact Registry location (e.g., `us-central1`) | -       |
-| `-p`, `--project`       | Google Cloud Project ID                          | current project from gcloud |
-| `-s`, `--min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`  |
-| `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`  |
-| `-d` `--debug`         | Enable verbose logging                                          | `false` |
+| Flag                    | Description                                                     | Default                 |
+| :---------------------- | :-------------------------------------------------------------- | :---------------------- |
+| `-l`, `--location`      | **(Required)** Artifact Registry location (e.g., `us-central1`) | -                       |
+| `-p`, `--project`       | Google Cloud Project ID                                         | Active `gcloud` project |
+| `-s`, `--min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`                  |
+| `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`                  |
+| `-d`, `--debug`         | Enable verbose logging                                          | `false`                 |
 
 ## 🔑 Prerequisites
 

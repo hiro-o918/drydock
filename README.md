@@ -56,7 +56,21 @@ Focus on the most urgent threats.
 drydock -p my-project-id -l us-central1 -s CRITICAL
 ```
 
-**2. Export report to CSV**
+**2. Find only fixable vulnerabilities**
+Focus on vulnerabilities that have a fix available.
+
+```bash
+drydock -l us-central1 --fixable
+```
+
+**3. Find Medium+ severity vulnerabilities that are fixable**
+Focus on actionable vulnerabilities of medium or higher severity that have fixes available.
+
+```bash
+drydock -l us-central1 -s MEDIUM --fixable
+```
+
+**4. Export report to CSV**
 Generate a spreadsheet-compatible file for reporting.
 
 ```bash
@@ -77,9 +91,10 @@ drydock -l us-central1
 | `-l`, `--location`      | **(Required)** Artifact Registry location (e.g., `us-central1`) | -                       |
 | `-p`, `--project`       | Google Cloud Project ID                                         | Active `gcloud` project |
 | `-s`, `--min-severity`  | Filter by severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`         | `HIGH`                  |
+| `-f`, `--fixable`       | Only show vulnerabilities that have a fix available             | `false`                 |
 | `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`                  |
-| `-d`, `--debug`         | Enable verbose logging                                          | `false`                 |
 | `-c`, `--concurrency`   | Number of concurrent API requests                               | `5`                     |
+| `-d`, `--debug`         | Enable verbose logging                                          | `false`                 |
 
 ## 🔑 Prerequisites
 

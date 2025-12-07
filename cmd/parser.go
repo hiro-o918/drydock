@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/hiro-o918/drydock"
+	"github.com/hiro-o918/drydock/schemas"
 )
 
 // Config holds the application configuration.
@@ -59,19 +59,19 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 
 	return cfg, nil
 }
-func parseSeverity(s string) (drydock.Severity, error) {
+func parseSeverity(s string) (schemas.Severity, error) {
 	s = strings.ToUpper(strings.TrimSpace(s))
 	switch s {
 	case "MINIMAL":
-		return drydock.SeverityMinimal, nil
+		return schemas.SeverityMinimal, nil
 	case "LOW":
-		return drydock.SeverityLow, nil
+		return schemas.SeverityLow, nil
 	case "MEDIUM":
-		return drydock.SeverityMedium, nil
+		return schemas.SeverityMedium, nil
 	case "HIGH":
-		return drydock.SeverityHigh, nil
+		return schemas.SeverityHigh, nil
 	case "CRITICAL":
-		return drydock.SeverityCritical, nil
+		return schemas.SeverityCritical, nil
 	default:
 		return "", fmt.Errorf("invalid severity level: %s (allowed: MINIMAL, LOW, MEDIUM, HIGH, CRITICAL)", s)
 	}

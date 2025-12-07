@@ -11,6 +11,7 @@ import (
 
 	"github.com/hiro-o918/drydock"
 	"github.com/hiro-o918/drydock/exporter"
+	"github.com/hiro-o918/drydock/schemas"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/api/option"
 )
@@ -95,7 +96,7 @@ func executeScan(
 		return err
 	}
 
-	results := make([]drydock.AnalyzeResult, 0)
+	results := make([]schemas.AnalyzeResult, 0)
 	var scanErrs error
 
 	log.Debug().Msg("Resolving images from Artifact Registry...")

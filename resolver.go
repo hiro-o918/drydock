@@ -11,6 +11,8 @@ import (
 
 	artifactregistry "cloud.google.com/go/artifactregistry/apiv1"
 	"cloud.google.com/go/artifactregistry/apiv1/artifactregistrypb"
+	"github.com/hiro-o918/drydock/schemas"
+	"github.com/hiro-o918/drydock/utils"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -29,9 +31,9 @@ type ImageResolver struct {
 
 // ImageTarget represents a resolved target for scanning.
 type ImageTarget struct {
-	Artifact ArtifactReference // Structured image reference
-	URI      string            // Original API response URI (for debugging)
-	Location string            // GCP location (e.g., "us-central1")
+	Artifact schemas.ArtifactReference // Structured image reference
+	URI      string                    // Original API response URI (for debugging)
+	Location string                    // GCP location (e.g., "us-central1")
 }
 
 // candidateImage is an internal struct used for selection logic.
@@ -241,20 +243,20 @@ func selectBestDigest(imageName, location, repository string, candidates []candi
 var compiledGarRegex = regexp.MustCompile(`^([a-z0-9-]+-docker\.pkg\.dev)/([^/]+)/([^/]+)/([^:@]+)(?::([^@]+))?(?:@(sha256:[a-fA-F0-9]{64}))?$`)
 
 // ParseArtifactURI parses a raw GAR URI string into a structured ArtifactReference.
-func ParseArtifactURI(uri string) (ArtifactReference, error) {
+func ParseArtifactURI(uri string) (schemas.ArtifactReference, error) {
 	matches := compiledGarRegex.FindStringSubmatch(uri)
 
 	if matches == nil {
-		return ArtifactReference{}, fmt.Errorf("invalid GAR URI format: %s", uri)
+		return schemas.ArtifactReference{}, fmt.Errorf("invalid GAR URI format: %s", uri)
 	}
 
-	return ArtifactReference{
+	return schemas.ArtifactReference{
 		Host:         matches[1],
 		ProjectID:    matches[2],
 		RepositoryID: matches[3],
 		ImageName:    matches[4],
-		Tag:          ToPtr(matches[5]),
-		Digest:       ToPtr(matches[6]),
+		Tag:          utils.ToPtr(matches[5]),
+		Digest:       utils.ToPtr(matches[6]),
 	}, nil
 }
 

@@ -1,10 +1,10 @@
-package drydock_test
+package utils_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hiro-o918/drydock"
+	"github.com/hiro-o918/drydock/utils"
 )
 
 func TestIsZero(t *testing.T) {
@@ -39,13 +39,13 @@ func TestIsZero(t *testing.T) {
 
 			switch v := tt.val.(type) {
 			case string:
-				got = drydock.IsZero(v)
+				got = utils.IsZero(v)
 			case int:
-				got = drydock.IsZero(v)
+				got = utils.IsZero(v)
 			case bool:
-				got = drydock.IsZero(v)
+				got = utils.IsZero(v)
 			case MyStruct:
-				got = drydock.IsZero(v)
+				got = utils.IsZero(v)
 			default:
 				t.Fatalf("unhandled type: %T", v)
 			}
@@ -74,7 +74,7 @@ func TestToPtr(t *testing.T) {
 		{
 			name: "String: empty returns nil",
 			run: func(t *testing.T) {
-				got := drydock.ToPtr("")
+				got := utils.ToPtr("")
 				if diff := cmp.Diff((*string)(nil), got); diff != "" {
 					t.Errorf("mismatch (-want +got):\n%s", diff)
 				}
@@ -83,7 +83,7 @@ func TestToPtr(t *testing.T) {
 		{
 			name: "String: value returns ptr",
 			run: func(t *testing.T) {
-				got := drydock.ToPtr("foo")
+				got := utils.ToPtr("foo")
 				want := sPtr("foo")
 				if diff := cmp.Diff(want, got); diff != "" {
 					t.Errorf("mismatch (-want +got):\n%s", diff)
@@ -93,7 +93,7 @@ func TestToPtr(t *testing.T) {
 		{
 			name: "Int: zero returns nil",
 			run: func(t *testing.T) {
-				got := drydock.ToPtr(0)
+				got := utils.ToPtr(0)
 				if diff := cmp.Diff((*int)(nil), got); diff != "" {
 					t.Errorf("mismatch (-want +got):\n%s", diff)
 				}
@@ -102,7 +102,7 @@ func TestToPtr(t *testing.T) {
 		{
 			name: "Int: value returns ptr",
 			run: func(t *testing.T) {
-				got := drydock.ToPtr(123)
+				got := utils.ToPtr(123)
 				want := iPtr(123)
 				if diff := cmp.Diff(want, got); diff != "" {
 					t.Errorf("mismatch (-want +got):\n%s", diff)
@@ -112,7 +112,7 @@ func TestToPtr(t *testing.T) {
 		{
 			name: "Struct: empty returns nil",
 			run: func(t *testing.T) {
-				got := drydock.ToPtr(MyStruct{})
+				got := utils.ToPtr(MyStruct{})
 				if diff := cmp.Diff((*MyStruct)(nil), got); diff != "" {
 					t.Errorf("mismatch (-want +got):\n%s", diff)
 				}
@@ -122,7 +122,7 @@ func TestToPtr(t *testing.T) {
 			name: "Struct: value returns ptr",
 			run: func(t *testing.T) {
 				val := MyStruct{ID: 1}
-				got := drydock.ToPtr(val)
+				got := utils.ToPtr(val)
 				want := stPtr(val)
 				if diff := cmp.Diff(want, got); diff != "" {
 					t.Errorf("mismatch (-want +got):\n%s", diff)

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiro-o918/drydock"
+	"github.com/hiro-o918/drydock/schemas"
 )
 
 // TableExporter exports analysis results in a delimiter-separated format (CSV/TSV).
@@ -42,7 +42,7 @@ func NewDefaultCSVExporter() *TableExporter {
 }
 
 // Export outputs the analysis results.
-func (e *TableExporter) Export(ctx context.Context, results []drydock.AnalyzeResult) error {
+func (e *TableExporter) Export(ctx context.Context, results []schemas.AnalyzeResult) error {
 	// 1. Write Header
 	header := []string{
 		"Scan Time",
@@ -87,7 +87,7 @@ func (e *TableExporter) Export(ctx context.Context, results []drydock.AnalyzeRes
 
 // buildRecord centralizes the logic of converting a single vulnerability into a row of strings.
 // This ensures CSV and TSV always output the same data structure.
-func buildRecord(scanTime, imageURI string, v drydock.Vulnerability) []string {
+func buildRecord(scanTime, imageURI string, v schemas.Vulnerability) []string {
 	// Handle URL logic (pick first or empty)
 	urlStr := ""
 	if len(v.URLs) > 0 {

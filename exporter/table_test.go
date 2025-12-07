@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/hiro-o918/drydock"          // 実際のモジュールパス
+	"github.com/google/go-cmp/cmp"          // 実際のモジュールパス
 	"github.com/hiro-o918/drydock/exporter" // 実際のモジュールパス
+	"github.com/hiro-o918/drydock/schemas"
 )
 
 // TestTableExporter_Export_CSV verifies the data transformation logic using CSV format.
@@ -24,7 +24,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 	digest := "sha256:123456789abcdef"
 
 	type args struct {
-		results []drydock.AnalyzeResult
+		results []schemas.AnalyzeResult
 	}
 
 	tests := map[string]struct {
@@ -33,7 +33,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 	}{
 		"should write header only when results are empty": {
 			args: args{
-				results: []drydock.AnalyzeResult{},
+				results: []schemas.AnalyzeResult{},
 			},
 			want: [][]string{
 				{"Scan Time", "Image URI", "Vulnerability ID", "Severity", "CVSS Score", "Package Name", "Installed Version", "Fixed Version", "Description", "Reference URL"},
@@ -41,9 +41,9 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 		},
 		"should format standard vulnerability data correctly": {
 			args: args{
-				results: []drydock.AnalyzeResult{
+				results: []schemas.AnalyzeResult{
 					{
-						Artifact: drydock.ArtifactReference{
+						Artifact: schemas.ArtifactReference{
 							Host:         "asia.gcr.io",
 							ProjectID:    "my-project",
 							RepositoryID: "my-repo",
@@ -51,10 +51,10 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 							Tag:          &tag,
 						},
 						ScanTime: fixedTime,
-						Vulnerabilities: []drydock.Vulnerability{
+						Vulnerabilities: []schemas.Vulnerability{
 							{
 								ID:               "CVE-2023-9999",
-								Severity:         drydock.SeverityHigh,
+								Severity:         schemas.SeverityHigh,
 								CVSSScore:        8.5,
 								PackageName:      "openssl",
 								InstalledVersion: "1.1.1",
@@ -84,18 +84,18 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 		},
 		"should handle multiple vulnerabilities (flattening)": {
 			args: args{
-				results: []drydock.AnalyzeResult{
+				results: []schemas.AnalyzeResult{
 					{
-						Artifact: drydock.ArtifactReference{
+						Artifact: schemas.ArtifactReference{
 							Host:         "gcr.io",
 							ProjectID:    "p",
 							RepositoryID: "r",
 							ImageName:    "multi",
 						},
 						ScanTime: fixedTime,
-						Vulnerabilities: []drydock.Vulnerability{
-							{ID: "CVE-1", Severity: drydock.SeverityLow},
-							{ID: "CVE-2", Severity: drydock.SeverityMedium},
+						Vulnerabilities: []schemas.Vulnerability{
+							{ID: "CVE-1", Severity: schemas.SeverityLow},
+							{ID: "CVE-2", Severity: schemas.SeverityMedium},
 						},
 					},
 				},
@@ -108,9 +108,9 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 		},
 		"should handle special characters (CSV escaping)": {
 			args: args{
-				results: []drydock.AnalyzeResult{
+				results: []schemas.AnalyzeResult{
 					{
-						Artifact: drydock.ArtifactReference{
+						Artifact: schemas.ArtifactReference{
 							Host:         "pkg.dev",
 							ProjectID:    "p",
 							RepositoryID: "r",
@@ -118,7 +118,7 @@ func TestTableExporter_Export_CSV(t *testing.T) {
 							Digest:       &digest,
 						},
 						ScanTime: fixedTime,
-						Vulnerabilities: []drydock.Vulnerability{
+						Vulnerabilities: []schemas.Vulnerability{
 							{
 								ID:          "CVE-ESC",
 								Description: "Line 1\nLine 2, with \"quotes\"",
@@ -168,14 +168,14 @@ func TestTableExporter_Export_TSV(t *testing.T) {
 	fixedTime := time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)
 	fixedTimeStr := fixedTime.Format(time.RFC3339)
 
-	results := []drydock.AnalyzeResult{
+	results := []schemas.AnalyzeResult{
 		{
-			Artifact: drydock.ArtifactReference{
+			Artifact: schemas.ArtifactReference{
 				Host: "h", ProjectID: "p", RepositoryID: "r", ImageName: "i",
 			},
 			ScanTime: fixedTime,
-			Vulnerabilities: []drydock.Vulnerability{
-				{ID: "CVE-TSV", Severity: drydock.SeverityCritical},
+			Vulnerabilities: []schemas.Vulnerability{
+				{ID: "CVE-TSV", Severity: schemas.SeverityCritical},
 			},
 		},
 	}

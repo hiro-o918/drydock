@@ -166,39 +166,35 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 	var results []ImageTarget
 	for name, candidates := range grouped {
 		best := selectBestDigest(name, location, repository, candidates)
-		if best.Digest != "" {
-			// Parse the URI to get ArtifactReference
-			artifactRef, err := ParseArtifactURI(best.URI)
-			if err != nil {
-				log.Warn().Err(err).Str("uri", best.URI).Msg("Failed to parse URI, skipping image")
-				continue
-			}
-
-			log.Debug().
-				Str("location", location).
-				Str("repository", repository).
-				Str("image_name", name).
-				Str("digest", best.Digest).
-				Str("uri", best.URI).
-				Msg("Resolved image target")
-
-			// get one tag if available
-			if len(best.Tags) > 0 {
-				artifactRef.Tag = utils.ToPtr(best.Tags[0])
-			}
-
-			results = append(results, ImageTarget{
-				Artifact: artifactRef,
-				URI:      best.URI,
-				Location: location,
-			})
-		} else {
-			log.Warn().
-				Str("location", location).
-				Str("repository", repository).
-				Str("image_name", name).
-				Msg("No valid digest found for image, skipping")
+		if best.Digest == "" {
+			return nil, fmt.Errorf("no valid candidates found for image %s", name)
 		}
+
+		// Parse the URI to get ArtifactReference
+		artifactRef, err := ParseArtifactURI(best.URI)
+		if err != nil {
+			log.Warn().Err(err).Str("uri", best.URI).Msg("Failed to parse URI, skipping image")
+			continue
+		}
+
+		log.Debug().
+			Str("location", location).
+			Str("repository", repository).
+			Str("image_name", name).
+			Str("digest", best.Digest).
+			Str("uri", best.URI).
+			Msg("Resolved image target")
+
+		// get one tag if available
+		if len(best.Tags) > 0 {
+			artifactRef.Tag = utils.ToPtr(best.Tags[0])
+		}
+
+		results = append(results, ImageTarget{
+			Artifact: artifactRef,
+			URI:      best.URI,
+			Location: location,
+		})
 	}
 
 	return results, nil

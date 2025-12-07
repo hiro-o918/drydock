@@ -7,6 +7,7 @@ import (
 
 	containeranalysis "cloud.google.com/go/containeranalysis/apiv1"
 	"github.com/hiro-o918/drydock/schemas"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	grafeaspb "google.golang.org/genproto/googleapis/grafeas/v1"
@@ -82,10 +83,6 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 
 func convertToVulnerability(occ *grafeaspb.Occurrence) (schemas.Vulnerability, error) {
 	vulnDetails := occ.GetVulnerability()
-	if vulnDetails == nil {
-		return schemas.Vulnerability{}, fmt.Errorf("occurrence does not contain vulnerability details")
-	}
-
 	// Initialize variables for package details
 	var pkgName string
 	var installedVer string
@@ -170,6 +167,11 @@ func filterBySeverity(vulns []schemas.Vulnerability, min schemas.Severity) []sch
 	filtered := make([]schemas.Vulnerability, 0)
 
 	for _, v := range vulns {
+		log.Debug().Str("vulnerability_id", v.ID).
+			Str("severity", string(v.Severity)).
+			Int("severity_level", levels[v.Severity]).
+			Int("threshold_level", threshold).
+			Msg("Evaluating vulnerability for severity filter")
 		if levels[v.Severity] >= threshold {
 			filtered = append(filtered, v)
 		}

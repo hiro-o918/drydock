@@ -17,6 +17,7 @@ type Config struct {
 	Location     string
 	MinSeverity  string
 	OutputFormat drydock.OutputFormat
+	Concurrency  uint8
 	Debug        bool
 }
 
@@ -39,6 +40,7 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 
 	cfg := &Config{
 		OutputFormat: drydock.OutputFormatJSON,
+		Concurrency:  5, // Default concurrency level
 	}
 
 	// --project / -p
@@ -56,6 +58,38 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 	// --output-format / -o
 	fs.Var(&cfg.OutputFormat, "output-format", "Output format (json, csv, tsv)")
 	fs.Var(&cfg.OutputFormat, "o", "Output format (alias for --output-format)")
+
+	// --concurrency / -c
+	fs.Func("concurrency", "Number of concurrent scans (default: 5)", func(s string) error {
+		var n uint64
+		_, err := fmt.Sscanf(s, "%d", &n)
+		if err != nil {
+			return fmt.Errorf("invalid concurrency value: %w", err)
+		}
+		if n < 1 {
+			return fmt.Errorf("concurrency must be at least 1")
+		}
+		if n > 255 {
+			return fmt.Errorf("concurrency must be at most 255")
+		}
+		cfg.Concurrency = uint8(n)
+		return nil
+	})
+	fs.Func("c", "Concurrency (alias for --concurrency)", func(s string) error {
+		var n uint64
+		_, err := fmt.Sscanf(s, "%d", &n)
+		if err != nil {
+			return fmt.Errorf("invalid concurrency value: %w", err)
+		}
+		if n < 1 {
+			return fmt.Errorf("concurrency must be at least 1")
+		}
+		if n > 255 {
+			return fmt.Errorf("concurrency must be at most 255")
+		}
+		cfg.Concurrency = uint8(n)
+		return nil
+	})
 
 	// --debug / -d
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug logging")

@@ -87,6 +87,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	scanner := drydock.NewScanner(
 		cfg.Location,
 		cfg.ProjectID,
+		cfg.Concurrency,
 		resolver,
 		analyzer,
 		resultExporter,

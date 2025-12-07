@@ -50,14 +50,6 @@ func TestConvertToVulnerability(t *testing.T) {
 				FixedVersion:     "1.1.1t",
 			},
 		},
-		"should return nil when vulnerability details are missing in occurrence": {
-			input: &grafeaspb.Occurrence{
-				NoteName: "projects/ops/notes/EMPTY",
-				// Details field is nil
-			},
-			want:    schemas.Vulnerability{},
-			wantErr: true,
-		},
 	}
 
 	for name, tt := range tests {

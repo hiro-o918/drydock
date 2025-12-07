@@ -121,3 +121,13 @@ type OutputFormat string
 const (
 	OutputFormatJSON OutputFormat = "json"
 )
+
+// ArtifactReference represents the parsed components of a Google Artifact Registry URI.
+type ArtifactReference struct {
+	Host         string  // e.g., region-docker.pkg.dev
+	ProjectID    string  // e.g., my-project-id
+	RepositoryID string  // e.g., my-app-repo
+	ImageName    string  // e.g., my-service/worker
+	Tag          *string // e.g., v1.0.0 (nil if not present)
+	Digest       *string // e.g., sha256:e3b0... (nil if not present)
+}

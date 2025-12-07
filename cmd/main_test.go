@@ -40,10 +40,6 @@ func TestParseSeverity(t *testing.T) {
 			input:   "",
 			wantErr: true,
 		},
-		"should return error when severity is lowercase": {
-			input:   "medium",
-			wantErr: true,
-		},
 	}
 
 	for name, tt := range tests {

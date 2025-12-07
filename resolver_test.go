@@ -8,71 +8,92 @@ import (
 	"github.com/hiro-o918/drydock"
 )
 
-func TestIsDigest(t *testing.T) {
-	tests := map[string]struct {
-		input string
-		want  bool
-	}{
-		"should return true when tag starts with sha256 prefix": {
-			input: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			want:  true,
-		},
-		"should return false when tag is a normal version tag": {
-			input: "latest",
-			want:  false,
-		},
-		"should return false when tag is empty": {
-			input: "",
-			want:  false,
-		},
-	}
+func TestParseArtifactURI(t *testing.T) {
+	const validHash = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			got := drydock.ExportIsDigest(tt.input)
-			if got != tt.want {
-				t.Errorf("IsDigest(%q) = %v, want %v", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestParseDigestFromURI(t *testing.T) {
-	tests := map[string]struct {
-		input         string
-		wantImageName string
-		wantDigest    string
-		wantErr       bool
+	tests := []struct {
+		name    string
+		input   string
+		want    drydock.ArtifactReference
+		wantErr bool
 	}{
-		"should extract digest when uri format is valid": {
-			input:         "us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:123456789abcdef",
-			wantImageName: "us-central1-docker.pkg.dev/my-project/my-repo/my-image",
-			wantDigest:    "sha256:123456789abcdef",
-			wantErr:       false,
+		{
+			name:  "Valid URI with Digest",
+			input: "us-central1-docker.pkg.dev/my-project/my-repo/my-image@" + validHash,
+			want: drydock.ArtifactReference{
+				Host:         "us-central1-docker.pkg.dev",
+				ProjectID:    "my-project",
+				RepositoryID: "my-repo",
+				ImageName:    "my-image",
+				Tag:          nil,
+				Digest:       drydock.ToPtr(validHash),
+			},
+			wantErr: false,
 		},
-		"should fail when separator @ is missing": {
-			input:   "us-central1-docker.pkg.dev/my-project/my-repo/my-image:latest",
+		{
+			name:  "Valid URI with Nested Namespace and Digest",
+			input: "us-central1-docker.pkg.dev/my-project/my-repo/namespace/my-image@" + validHash,
+			want: drydock.ArtifactReference{
+				Host:         "us-central1-docker.pkg.dev",
+				ProjectID:    "my-project",
+				RepositoryID: "my-repo",
+				ImageName:    "namespace/my-image",
+				Tag:          nil,
+				Digest:       drydock.ToPtr(validHash),
+			},
+			wantErr: false,
+		},
+		{
+			name:  "Valid URI with Tag only",
+			input: "asia-northeast1-docker.pkg.dev/prod/docker/nginx:v1.2.3",
+			want: drydock.ArtifactReference{
+				Host:         "asia-northeast1-docker.pkg.dev",
+				ProjectID:    "prod",
+				RepositoryID: "docker",
+				ImageName:    "nginx",
+				Tag:          drydock.ToPtr("v1.2.3"),
+				Digest:       nil,
+			},
+			wantErr: false,
+		},
+		{
+			name:  "Valid URI with Tag AND Digest (Pinning)",
+			input: "asia-northeast1-docker.pkg.dev/prod/docker/nginx:latest@" + validHash,
+			want: drydock.ArtifactReference{
+				Host:         "asia-northeast1-docker.pkg.dev",
+				ProjectID:    "prod",
+				RepositoryID: "docker",
+				ImageName:    "nginx",
+				Tag:          drydock.ToPtr("latest"),
+				Digest:       drydock.ToPtr(validHash),
+			},
+			wantErr: false,
+		},
+		{
+			name:    "Fail: Insufficient path segments",
+			input:   "us-central1-docker.pkg.dev/project@" + validHash,
 			wantErr: true,
 		},
-		"should fail when digest part does not start with sha256:": {
+		{
+			name:    "Fail: Invalid digest prefix (md5)",
 			input:   "us-central1-docker.pkg.dev/my-project/my-repo/my-image@md5:12345",
 			wantErr: true,
 		},
 	}
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			gotImageName, gotDigest, err := drydock.ExportParseDigestFromURI(tt.input)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := drydock.ParseArtifactURI(tt.input)
 
+			// Check error expectation
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseDigestFromURI() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseArtifactURI() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if gotImageName != tt.wantImageName {
-				t.Errorf("ParseDigestFromURI() gotImageName = %v, want %v", gotImageName, tt.wantImageName)
-			}
-			if gotDigest != tt.wantDigest {
-				t.Errorf("ParseDigestFromURI() gotDigest = %v, want %v", gotDigest, tt.wantDigest)
+
+			// Check diff using go-cmp
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("ParseArtifactURI() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -125,7 +146,7 @@ func TestSelectBestDigest(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := drydock.ExportSelectBestDigest(tt.candidates)
+			got := drydock.ExportSelectBestDigest("test-image", "us-central1", "test-repo", tt.candidates)
 
 			// cmp.Diff handles deep comparison including time.Time
 			if diff := cmp.Diff(tt.want, got); diff != "" {

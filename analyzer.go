@@ -52,6 +52,8 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 	it := grafeasClient.ListOccurrences(ctx, listReq)
 	vulnerabilities := make([]schemas.Vulnerability, 0)
 
+	var scanTime time.Time
+
 	for {
 		occ, err := it.Next()
 		if err == iterator.Done {
@@ -59,6 +61,10 @@ func (a *ArtifactRegistryAnalyzer) Analyze(ctx context.Context, req AnalyzeReque
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to list occurrences: %w", err)
+		}
+
+		if scanTime.IsZero() && occ.GetCreateTime() != nil {
+			scanTime = occ.GetCreateTime().AsTime()
 		}
 
 		vuln, err := convertToVulnerability(occ)

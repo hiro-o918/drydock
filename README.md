@@ -108,3 +108,56 @@ Ensure you have the following configured before running:
 2.  **Permissions:** Your account needs:
     - `roles/artifactregistry.reader` (To list images)
     - `roles/containeranalysis.occurrences.viewer` (To read vulnerability data)
+
+## 🛠 Using Drydock as a Library
+
+Drydock can be used as a library in your Go applications, allowing you to implement custom exporters or integrate vulnerability scanning into your own tools.
+
+### Basic Usage
+
+```go
+import "github.com/hiro-o918/drydock"
+
+func main() {
+    ctx := context.Background()
+
+    // Initialize scanner with location and options
+    scanner, err := drydock.NewScanner(
+        ctx,
+        "us-central1",
+        drydock.WithProjectID("my-project-id"),
+    )
+    if err != nil {
+        // Handle error
+    }
+    defer scanner.Close()
+
+    // Run scan with HIGH severity threshold and only fixable vulnerabilities
+    if err := scanner.Scan(ctx, schemas.SeverityHigh, true); err != nil {
+        // Handle error
+    }
+}
+```
+
+### Custom Exporters
+
+You can implement custom exporters by implementing the `Exporter` interface:
+
+```go
+type Exporter interface {
+    Export(ctx context.Context, results []schemas.AnalyzeResult) error
+}
+```
+
+Example of using a custom exporter:
+
+```go
+// Create your custom exporter
+customExporter := NewMyCustomExporter()
+
+// Use it with the scanner
+scanner, err := drydock.NewScanner(ctx, "us-central1",
+    drydock.WithExporter(customExporter))
+```
+
+For a complete working example of a Markdown exporter, see the [markdown_exporter example](./examples/markdown_exporter).

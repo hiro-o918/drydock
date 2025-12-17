@@ -4,21 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"sync"
 
 	"github.com/hiro-o918/drydock/schemas"
 	"github.com/hiro-o918/drydock/utils"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/api/option"
 )
 
 // Scanner handles the scanning of container images.
 type Scanner struct {
-	location    string
-	projectID   string
-	concurrency uint8
-	resolver    *ImageResolver
-	analyzer    *ArtifactRegistryAnalyzer
-	exporter    Exporter
+	location      string
+	projectID     string
+	concurrency   uint8
+	resolver      *ImageResolver
+	analyzer      *ArtifactRegistryAnalyzer
+	exporter      Exporter
+	clientOptions []option.ClientOption // クライアント作成時のオプション
 }
 
 // ScannerOption defines a function type that can configure a Scanner
@@ -39,21 +43,61 @@ func WithConcurrency(concurrency uint8) ScannerOption {
 		return nil
 	}
 }
+
+// WithResolver sets a custom ImageResolver
+func WithResolver(resolver *ImageResolver) ScannerOption {
+	return func(s *Scanner) error {
+		s.resolver = resolver
+		return nil
+	}
+}
+
+// WithAnalyzer sets a custom Analyzer
+func WithAnalyzer(analyzer *ArtifactRegistryAnalyzer) ScannerOption {
+	return func(s *Scanner) error {
+		s.analyzer = analyzer
+		return nil
+	}
+}
+
+// WithExporter sets a custom Exporter
+func WithExporter(exporter Exporter) ScannerOption {
+	return func(s *Scanner) error {
+		s.exporter = exporter
+		return nil
+	}
+}
+
+// WithOutputFormat sets the output format and creates an appropriate exporter
+func WithOutputFormat(format OutputFormat, writer io.Writer) ScannerOption {
+	return func(s *Scanner) error {
+		exporter, err := NewExporter(format, writer)
+		if err != nil {
+			return fmt.Errorf("failed to create exporter with format %s: %w", format, err)
+		}
+		s.exporter = exporter
+		return nil
+	}
+}
+
+// WithClientOptions sets client options for both resolver and analyzer
+func WithClientOptions(opts ...option.ClientOption) ScannerOption {
+	return func(s *Scanner) error {
+		s.clientOptions = opts
+		return nil
+	}
+}
+
 func NewScanner(
 	ctx context.Context,
 	location string,
-	resolver *ImageResolver,
-	analyzer *ArtifactRegistryAnalyzer,
-	exporter Exporter,
 	opts ...ScannerOption,
 ) (*Scanner, error) {
-	// Initialize scanner with required fields
+	// Initialize scanner with required fields and default values
 	scanner := &Scanner{
-		location:    location,
-		concurrency: 5, // Default concurrency
-		resolver:    resolver,
-		analyzer:    analyzer,
-		exporter:    exporter,
+		location:      location,
+		concurrency:   5,                       // Default concurrency
+		clientOptions: []option.ClientOption{}, // 空の配列で初期化
 	}
 
 	// Apply all options if provided
@@ -69,6 +113,39 @@ func NewScanner(
 		scanner.projectID, err = utils.GetProjectID(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("project ID is required but was not provided and could not be determined: %w", err)
+		}
+	}
+
+	// Add project ID to client options if provided
+	if scanner.projectID != "" {
+		scanner.clientOptions = append(scanner.clientOptions, option.WithQuotaProject(scanner.projectID))
+	}
+
+	// Create default components if not provided via options
+	var err error
+
+	// Default resolver if not set
+	if scanner.resolver == nil {
+		scanner.resolver, err = NewImageResolver(ctx, scanner.clientOptions...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create default image resolver: %w", err)
+		}
+	}
+
+	// Default analyzer if not set
+	if scanner.analyzer == nil {
+		scanner.analyzer, err = NewArtifactRegistryAnalyzer(ctx, scanner.clientOptions...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create default analyzer: %w", err)
+		}
+	}
+
+	// Default exporter if not set
+	if scanner.exporter == nil {
+		// JSONをデフォルト形式、標準出力をデフォルトwriterとする
+		scanner.exporter, err = NewExporter(OutputFormatJSON, os.Stdout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create default exporter: %w", err)
 		}
 	}
 
@@ -183,4 +260,18 @@ func (s *Scanner) analyzeTarget(
 	}
 
 	collector.addResult(*result)
+}
+
+// Close releases all resources used by the scanner
+func (s *Scanner) Close() error {
+	var errs error
+	if err := s.resolver.Close(); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("failed to close resolver: %w", err))
+	}
+
+	if err := s.analyzer.Close(); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("failed to close analyzer: %w", err))
+	}
+
+	return errs
 }

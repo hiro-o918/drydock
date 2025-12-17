@@ -54,34 +54,6 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		clientOpts = append(clientOpts, option.WithQuotaProject(cfg.ProjectID))
 	}
 
-	// Initialize Image Resolver
-	resolver, err := drydock.NewImageResolver(ctx, clientOpts...)
-	if err != nil {
-		return fmt.Errorf("failed to initialize image resolver: %w", err)
-	}
-	defer func() {
-		if err := resolver.Close(); err != nil {
-			log.Warn().Err(err).Msg("Failed to close resolver")
-		}
-	}()
-
-	// Initialize Analyzer
-	analyzer, err := drydock.NewArtifactRegistryAnalyzer(ctx, clientOpts...)
-	if err != nil {
-		return fmt.Errorf("failed to initialize analyzer: %w", err)
-	}
-	defer func() {
-		if err := analyzer.Close(); err != nil {
-			log.Warn().Err(err).Msg("Failed to close analyzer")
-		}
-	}()
-
-	// Initialize Exporter (Output to stdout)
-	resultExporter, err := drydock.NewExporter(cfg.OutputFormat, stdout)
-	if err != nil {
-		return fmt.Errorf("failed to initialize exporter: %w", err)
-	}
-
 	// 4. Execution Phase
 	log.Info().Msg("Starting vulnerability scan...")
 
@@ -91,19 +63,19 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		scannerOpts = append(scannerOpts, drydock.WithProjectID(cfg.ProjectID))
 	}
 	scannerOpts = append(scannerOpts, drydock.WithConcurrency(cfg.Concurrency))
+	scannerOpts = append(scannerOpts, drydock.WithClientOptions(clientOpts...))
+	scannerOpts = append(scannerOpts, drydock.WithOutputFormat(cfg.OutputFormat, stdout))
 
-	// Initialize scanner with required params and optional projectID
-	scanner, err := drydock.NewScanner(
-		ctx,
-		cfg.Location,
-		resolver,
-		analyzer,
-		resultExporter,
-		scannerOpts...,
-	)
+	// Initialize scanner with location and options
+	scanner, err := drydock.NewScanner(ctx, cfg.Location, scannerOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to initialize scanner: %w", err)
 	}
+	defer func() {
+		if err := scanner.Close(); err != nil {
+			log.Warn().Err(err).Msg("Failed to close scanner resources")
+		}
+	}()
 
 	minSeverity, err := parseSeverity(cfg.MinSeverity)
 	if err != nil {

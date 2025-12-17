@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/hiro-o918/drydock/compare/v0.2.1...v0.2.2) (2025-12-17)
+
+
+### Documentation
+
+* Add usage instructions for Drydock as a library and examples ([9971c88](https://github.com/hiro-o918/drydock/commit/9971c880a1fd65ffc3f5e5eaaebd1f517d474f65))
+
 ## [0.2.1](https://github.com/hiro-o918/drydock/compare/v0.2.0...v0.2.1) (2025-12-08)
 
 

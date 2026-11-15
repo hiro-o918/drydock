@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -62,6 +63,106 @@ func (r *ImageResolver) Close() error {
 // It scans all Docker repositories in the specified project and location.
 // For each image found, it selects the best digest (preferring "latest" tag, otherwise newest).
 func (r *ImageResolver) AllLatestImages(ctx context.Context, projectID, location string) iter.Seq2[ImageTarget, error] {
+	return r.discoverImages(ctx, projectID, location, defaultScanPolicy())
+}
+
+// digestSelectionOptions configures how candidate digests are narrowed down
+// to the ones that should be scanned for a single image.
+type digestSelectionOptions struct {
+	count     int
+	preferTag string
+	maxAge    time.Duration
+	now       time.Time
+}
+
+// selectDigests narrows candidates down to at most opts.count entries,
+// ranking a candidate tagged with opts.preferTag ahead of the rest and
+// breaking remaining ties by recency, after dropping candidates older than
+// opts.maxAge (when set). Input order is not relied upon.
+func selectDigests(candidates []candidateImage, opts digestSelectionOptions) []candidateImage {
+	filtered := candidates
+	if opts.maxAge > 0 {
+		filtered = make([]candidateImage, 0, len(candidates))
+		for _, c := range candidates {
+			if opts.now.Sub(c.UpdateTime) <= opts.maxAge {
+				filtered = append(filtered, c)
+			}
+		}
+	}
+
+	sorted := slices.Clone(filtered)
+	slices.SortStableFunc(sorted, func(a, b candidateImage) int {
+		aPreferred := opts.preferTag != "" && slices.Contains(a.Tags, opts.preferTag)
+		bPreferred := opts.preferTag != "" && slices.Contains(b.Tags, opts.preferTag)
+		if aPreferred != bPreferred {
+			if aPreferred {
+				return -1
+			}
+			return 1
+		}
+		return b.UpdateTime.Compare(a.UpdateTime)
+	})
+
+	count := opts.count
+	if count <= 0 || count > len(sorted) {
+		count = len(sorted)
+	}
+	return sorted[:count]
+}
+
+// scanPolicy configures target discovery across repositories and images.
+type scanPolicy struct {
+	selection           digestSelectionOptions
+	maxCandidates       int
+	includeRepositories map[string]struct{}
+	excludeRepositories map[string]struct{}
+	imagePatterns       []string
+}
+
+// defaultScanPolicy reproduces the historical AllLatestImages behavior: one
+// digest per image, preferring the "latest" tag, no filtering.
+func defaultScanPolicy() scanPolicy {
+	return scanPolicy{
+		selection:     digestSelectionOptions{count: 1, preferTag: "latest"},
+		maxCandidates: MaxCandidates,
+	}
+}
+
+func repositoryAllowed(repositoryID string, include, exclude map[string]struct{}) bool {
+	if len(include) > 0 {
+		if _, ok := include[repositoryID]; !ok {
+			return false
+		}
+	}
+	_, excluded := exclude[repositoryID]
+	return !excluded
+}
+
+// sortedImageNames avoids depending on Go's randomized map iteration order.
+func sortedImageNames(grouped map[string][]candidateImage) []string {
+	names := make([]string, 0, len(grouped))
+	for name := range grouped {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+func matchesAnyImagePattern(imageName string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return true
+	}
+	for _, pattern := range patterns {
+		if ok, err := path.Match(pattern, imageName); err == nil && ok {
+			return true
+		}
+	}
+	return false
+}
+
+// discoverImages is the generalized form of AllLatestImages, applying policy
+// to decide which repositories, images and digests to yield.
+func (r *ImageResolver) discoverImages(ctx context.Context, projectID, location string, policy scanPolicy) iter.Seq2[ImageTarget, error] {
 	return func(yield func(ImageTarget, error) bool) {
 		parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
 		repoReq := &artifactregistrypb.ListRepositoriesRequest{Parent: parent}
@@ -87,9 +188,14 @@ func (r *ImageResolver) AllLatestImages(ctx context.Context, projectID, location
 				continue
 			}
 
+			_, repositoryID := extractLocationAndRepository(repo.Name)
+			if !repositoryAllowed(repositoryID, policy.includeRepositories, policy.excludeRepositories) {
+				continue
+			}
+
 			// 2. Scan the repository for targets
-			// We buffer results per repository to perform the "best digest" selection logic.
-			targets, err := r.scanRepository(ctx, repo.Name)
+			// We buffer results per repository to perform the digest selection logic.
+			targets, err := r.scanRepository(ctx, repo.Name, policy)
 			if err != nil {
 				if !yield(ImageTarget{}, fmt.Errorf("failed to scan repo %s: %w", repo.Name, err)) {
 					return
@@ -107,8 +213,8 @@ func (r *ImageResolver) AllLatestImages(ctx context.Context, projectID, location
 	}
 }
 
-// scanRepository fetches images from a repo, grouped by image name, and selects the best candidate for each.
-func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]ImageTarget, error) {
+// scanRepository fetches images from a repo, grouped by image name, and selects the matching candidates for each.
+func (r *ImageResolver) scanRepository(ctx context.Context, repoName string, policy scanPolicy) ([]ImageTarget, error) {
 	// Extract location and repository from repoName
 	location, repository := extractLocationAndRepository(repoName)
 
@@ -119,9 +225,14 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 	}
 	it := r.client.ListDockerImages(ctx, imageReq)
 
+	maxCandidates := policy.maxCandidates
+	if maxCandidates < policy.selection.count {
+		maxCandidates = policy.selection.count
+	}
+
 	// Group: ImageName -> []candidateImage
 	grouped := make(map[string][]candidateImage)
-	// Optimization: Track counts to stop collecting after MaxCandidates per image
+	// Optimization: Track counts to stop collecting after maxCandidates per image
 	counts := make(map[string]int)
 
 	for {
@@ -145,10 +256,13 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 			continue
 		}
 		imageName := artifactReference.ImageName
+		if !matchesAnyImagePattern(imageName, policy.imagePatterns) {
+			continue
+		}
 		digest := *artifactReference.Digest
 
 		// Skip if we already have enough candidates for this image
-		if counts[imageName] >= MaxCandidates {
+		if counts[imageName] >= maxCandidates {
 			continue
 		}
 
@@ -162,87 +276,39 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string) ([]
 		counts[imageName]++
 	}
 
-	// Select the single best digest for each image group
 	var results []ImageTarget
-	for name, candidates := range grouped {
-		best := selectBestDigest(name, location, repository, candidates)
-		if best.Digest == "" {
-			return nil, fmt.Errorf("no valid candidates found for image %s", name)
-		}
+	for _, name := range sortedImageNames(grouped) {
+		candidates := grouped[name]
+		for _, best := range selectDigests(candidates, policy.selection) {
+			// Parse the URI to get ArtifactReference
+			artifactRef, err := ParseArtifactURI(best.URI)
+			if err != nil {
+				log.Warn().Err(err).Str("uri", best.URI).Msg("Failed to parse URI, skipping image")
+				continue
+			}
 
-		// Parse the URI to get ArtifactReference
-		artifactRef, err := ParseArtifactURI(best.URI)
-		if err != nil {
-			log.Warn().Err(err).Str("uri", best.URI).Msg("Failed to parse URI, skipping image")
-			continue
-		}
-
-		log.Debug().
-			Str("location", location).
-			Str("repository", repository).
-			Str("image_name", name).
-			Str("digest", best.Digest).
-			Str("uri", best.URI).
-			Msg("Resolved image target")
-
-		// get one tag if available
-		if len(best.Tags) > 0 {
-			artifactRef.Tag = utils.ToPtr(best.Tags[0])
-		}
-
-		results = append(results, ImageTarget{
-			Artifact: artifactRef,
-			URI:      best.URI,
-			Location: location,
-		})
-	}
-
-	return results, nil
-}
-
-// selectBestDigest chooses the best candidate based on policy:
-// 1. Prefer candidate with "latest" tag.
-// 2. If no "latest", prefer the one with the most recent UpdateTime.
-func selectBestDigest(imageName, location, repository string, candidates []candidateImage) candidateImage {
-	if len(candidates) == 0 {
-		return candidateImage{}
-	}
-
-	var newest candidateImage
-	// Initialize with the first one to have a fallback
-	newest = candidates[0]
-
-	for _, c := range candidates {
-		// Priority 1: Check for "latest" tag
-		if slices.Contains(c.Tags, "latest") {
 			log.Debug().
 				Str("location", location).
 				Str("repository", repository).
-				Str("image", imageName).
-				Str("digest", c.Digest).
-				Strs("tags", c.Tags).
-				Time("update_time", c.UpdateTime).
-				Str("selection_reason", "latest_tag").
-				Msg("Selected image digest")
-			return c
-		}
+				Str("image_name", name).
+				Str("digest", best.Digest).
+				Str("uri", best.URI).
+				Msg("Resolved image target")
 
-		// Priority 2: Track the newest timestamp
-		if c.UpdateTime.After(newest.UpdateTime) {
-			newest = c
+			// get one tag if available
+			if len(best.Tags) > 0 {
+				artifactRef.Tag = utils.ToPtr(best.Tags[0])
+			}
+
+			results = append(results, ImageTarget{
+				Artifact: artifactRef,
+				URI:      best.URI,
+				Location: location,
+			})
 		}
 	}
 
-	log.Debug().
-		Str("location", location).
-		Str("repository", repository).
-		Str("image", imageName).
-		Str("digest", newest.Digest).
-		Strs("tags", newest.Tags).
-		Time("update_time", newest.UpdateTime).
-		Str("selection_reason", "newest_timestamp").
-		Msg("Selected image digest")
-	return newest
+	return results, nil
 }
 
 // compiledGarRegex pre-compiles the regex for performance.

@@ -1,8 +1,12 @@
 package main
 
 import (
+	"io"
 	"testing"
+	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/hiro-o918/drydock"
 	"github.com/hiro-o918/drydock/schemas"
 )
 
@@ -51,6 +55,109 @@ func TestParseSeverity(t *testing.T) {
 			}
 			if !tt.wantErr && got != tt.want {
 				t.Errorf("parseSeverity() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseFlags(t *testing.T) {
+	tests := map[string]struct {
+		args    []string
+		want    *Config
+		wantErr bool
+	}{
+		"should default to one digest per image when discovery flags are omitted": {
+			args: []string{"-l", "us-central1"},
+			want: &Config{
+				Location:     "us-central1",
+				MinSeverity:  "HIGH",
+				OutputFormat: drydock.OutputFormatJSON,
+				Concurrency:  5,
+				Latest:       1,
+			},
+		},
+		"should collect repeated repository, exclude-repository, image-filter and digest flags": {
+			args: []string{
+				"-l", "us-central1",
+				"--latest", "3",
+				"--repository", "repo-a",
+				"--repository", "repo-b",
+				"--exclude-repository", "repo-c",
+				"--image-filter", "service/*",
+				"--max-age", "24h",
+				"--digest", "us-central1-docker.pkg.dev/p/r/img@sha256:aaa",
+				"--digest", "us-central1-docker.pkg.dev/p/r/img2@sha256:bbb",
+			},
+			want: &Config{
+				Location:            "us-central1",
+				MinSeverity:         "HIGH",
+				OutputFormat:        drydock.OutputFormatJSON,
+				Concurrency:         5,
+				Latest:              3,
+				Repositories:        []string{"repo-a", "repo-b"},
+				ExcludeRepositories: []string{"repo-c"},
+				ImageFilters:        []string{"service/*"},
+				MaxAge:              24 * time.Hour,
+				Digests: []string{
+					"us-central1-docker.pkg.dev/p/r/img@sha256:aaa",
+					"us-central1-docker.pkg.dev/p/r/img2@sha256:bbb",
+				},
+			},
+		},
+		"should return error when latest is less than one": {
+			args:    []string{"-l", "us-central1", "--latest", "0"},
+			wantErr: true,
+		},
+		"should allow latest below one when digest is set": {
+			args: []string{
+				"-l", "us-central1",
+				"--latest", "0",
+				"--digest", "us-central1-docker.pkg.dev/p/r/img@sha256:aaa",
+			},
+			want: &Config{
+				Location:     "us-central1",
+				MinSeverity:  "HIGH",
+				OutputFormat: drydock.OutputFormatJSON,
+				Concurrency:  5,
+				Latest:       0,
+				Digests:      []string{"us-central1-docker.pkg.dev/p/r/img@sha256:aaa"},
+			},
+		},
+		"should return error when max-age is negative": {
+			args:    []string{"-l", "us-central1", "--max-age", "-1h"},
+			wantErr: true,
+		},
+		"should allow negative max-age when digest is set": {
+			args: []string{
+				"-l", "us-central1",
+				"--max-age", "-1h",
+				"--digest", "us-central1-docker.pkg.dev/p/r/img@sha256:aaa",
+			},
+			want: &Config{
+				Location:     "us-central1",
+				MinSeverity:  "HIGH",
+				OutputFormat: drydock.OutputFormatJSON,
+				Concurrency:  5,
+				Latest:       1,
+				MaxAge:       -time.Hour,
+				Digests:      []string{"us-central1-docker.pkg.dev/p/r/img@sha256:aaa"},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := parseFlags(tt.args, io.Discard)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("parseFlags() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("parseFlags() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/hiro-o918/drydock"
 	"github.com/hiro-o918/drydock/schemas"
@@ -13,19 +14,28 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	ProjectID    string
-	Location     string
-	MinSeverity  string
-	FixableOnly  bool
-	OutputFormat drydock.OutputFormat
-	Concurrency  uint8
-	Debug        bool
+	ProjectID           string
+	Location            string
+	MinSeverity         string
+	FixableOnly         bool
+	OutputFormat        drydock.OutputFormat
+	Concurrency         uint8
+	Debug               bool
+	Latest              int
+	Repositories        []string
+	ExcludeRepositories []string
+	ImageFilters        []string
+	MaxAge              time.Duration
+	Digests             []string
 }
 
 // Validate checks if the configuration is valid.
 func (c *Config) Validate() error {
 	if c.Location == "" {
 		return errors.New("flag `-l`, `--location` is required")
+	}
+	if c.Latest < 1 {
+		return errors.New("flag `--latest` must be at least 1")
 	}
 	// OutputFormat validation is handled during flag parsing, so it's not needed here.
 	return nil
@@ -42,6 +52,7 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 	cfg := &Config{
 		OutputFormat: drydock.OutputFormatJSON,
 		Concurrency:  5, // Default concurrency level
+		Latest:       1, // Default: one digest per image, matching historical behavior
 	}
 
 	// --project / -p
@@ -98,6 +109,36 @@ func parseFlags(args []string, stderr io.Writer) (*Config, error) {
 	// --debug / -d
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug logging")
 	fs.BoolVar(&cfg.Debug, "d", false, "Debug (alias for --debug)")
+
+	// --latest
+	fs.IntVar(&cfg.Latest, "latest", 1, "Number of most relevant digests to keep per image")
+
+	// --repository (repeatable)
+	fs.Func("repository", "Restrict discovery to this repository ID (repeatable)", func(s string) error {
+		cfg.Repositories = append(cfg.Repositories, s)
+		return nil
+	})
+
+	// --exclude-repository (repeatable)
+	fs.Func("exclude-repository", "Exclude this repository ID from discovery (repeatable)", func(s string) error {
+		cfg.ExcludeRepositories = append(cfg.ExcludeRepositories, s)
+		return nil
+	})
+
+	// --image-filter (repeatable)
+	fs.Func("image-filter", "Glob pattern restricting which image names are discovered (repeatable)", func(s string) error {
+		cfg.ImageFilters = append(cfg.ImageFilters, s)
+		return nil
+	})
+
+	// --max-age
+	fs.DurationVar(&cfg.MaxAge, "max-age", 0, "Exclude digests last updated more than this long ago (e.g. 720h). 0 disables age filtering")
+
+	// --digest (repeatable)
+	fs.Func("digest", "Explicit image reference to scan; bypasses discovery (repeatable). Ignores --latest, --repository, --exclude-repository, --image-filter and --max-age when set", func(s string) error {
+		cfg.Digests = append(cfg.Digests, s)
+		return nil
+	})
 
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Drydock - Artifact Registry Vulnerability Scanner")

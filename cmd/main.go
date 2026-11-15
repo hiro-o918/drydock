@@ -66,6 +66,12 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	scannerOpts = append(scannerOpts, drydock.WithClientOptions(clientOpts...))
 	scannerOpts = append(scannerOpts, drydock.WithOutputFormat(cfg.OutputFormat, stdout))
 
+	targetOpt, err := targetResolverOption(cfg)
+	if err != nil {
+		return fmt.Errorf("invalid target configuration: %w", err)
+	}
+	scannerOpts = append(scannerOpts, targetOpt)
+
 	// Initialize scanner with location and options
 	scanner, err := drydock.NewScanner(ctx, cfg.Location, scannerOpts...)
 	if err != nil {
@@ -88,4 +94,44 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 
 	log.Info().Msg("Vulnerability scan completed successfully")
 	return nil
+}
+
+// targetResolverOption builds the ScannerOption controlling which digests to
+// scan. --digest takes precedence over the discovery-tuning flags, since it
+// is meant to replace discovery entirely with explicit, pinned images.
+func targetResolverOption(cfg *Config) (drydock.ScannerOption, error) {
+	if len(cfg.Digests) > 0 {
+		if cfg.Latest != 1 || len(cfg.Repositories) > 0 || len(cfg.ExcludeRepositories) > 0 || len(cfg.ImageFilters) > 0 || cfg.MaxAge > 0 {
+			log.Debug().Msg("--digest set; ignoring --latest, --repository, --exclude-repository, --image-filter and --max-age")
+		}
+
+		targets := make([]drydock.ImageTarget, 0, len(cfg.Digests))
+		for _, d := range cfg.Digests {
+			ref, err := drydock.ParseArtifactURI(d)
+			if err != nil {
+				return nil, fmt.Errorf("invalid --digest value %q: %w", d, err)
+			}
+			targets = append(targets, drydock.ImageTarget{
+				Artifact: ref,
+				URI:      d,
+				Location: cfg.Location,
+			})
+		}
+		return drydock.WithTargetResolver(drydock.NewStaticResolver(targets...)), nil
+	}
+
+	latestOpts := []drydock.LatestResolverOption{drydock.WithLatestCount(cfg.Latest)}
+	if len(cfg.Repositories) > 0 {
+		latestOpts = append(latestOpts, drydock.WithRepositories(cfg.Repositories...))
+	}
+	if len(cfg.ExcludeRepositories) > 0 {
+		latestOpts = append(latestOpts, drydock.WithExcludeRepositories(cfg.ExcludeRepositories...))
+	}
+	if len(cfg.ImageFilters) > 0 {
+		latestOpts = append(latestOpts, drydock.WithImageFilter(cfg.ImageFilters...))
+	}
+	if cfg.MaxAge > 0 {
+		latestOpts = append(latestOpts, drydock.WithMaxAge(cfg.MaxAge))
+	}
+	return drydock.WithLatestResolverOptions(latestOpts...), nil
 }

@@ -101,7 +101,7 @@ func TestParseArtifactURI(t *testing.T) {
 	}
 }
 
-func TestSelectBestDigest(t *testing.T) {
+func TestSelectDigests(t *testing.T) {
 	// Helper times for comparison
 	now := time.Now()
 	yesterday := now.Add(-24 * time.Hour)
@@ -109,50 +109,168 @@ func TestSelectBestDigest(t *testing.T) {
 
 	tests := map[string]struct {
 		candidates []drydock.ExportCandidateImage
-		want       drydock.ExportCandidateImage
+		opts       drydock.ExportDigestSelectionOptions
+		want       []drydock.ExportCandidateImage
 	}{
-		"should prioritize 'latest' tag even if it is older than others": {
-			// Case: 'latest' tag exists but is older than another tag. 'latest' should win.
+		"should prioritize preferred tag even if it is older than others": {
 			candidates: []drydock.ExportCandidateImage{
 				{Digest: "sha:old-latest", Tags: []string{"latest", "v1"}, UpdateTime: yesterday},
 				{Digest: "sha:new-beta", Tags: []string{"v2-beta"}, UpdateTime: now},
 			},
-			want: drydock.ExportCandidateImage{
-				Digest: "sha:old-latest", Tags: []string{"latest", "v1"}, UpdateTime: yesterday,
+			opts: drydock.NewExportDigestSelectionOptions(1, "latest", 0, now),
+			want: []drydock.ExportCandidateImage{
+				{Digest: "sha:old-latest", Tags: []string{"latest", "v1"}, UpdateTime: yesterday},
 			},
 		},
-		"should pick the newest timestamp when 'latest' tag is missing": {
-			// Case: No 'latest' tag. Should pick the one with the most recent timestamp.
+		"should pick the newest timestamp when preferred tag is missing": {
 			candidates: []drydock.ExportCandidateImage{
 				{Digest: "sha:old", Tags: []string{"v1"}, UpdateTime: lastWeek},
 				{Digest: "sha:mid", Tags: []string{"v2"}, UpdateTime: yesterday},
 				{Digest: "sha:new", Tags: []string{"v3"}, UpdateTime: now},
 			},
-			want: drydock.ExportCandidateImage{
-				Digest: "sha:new", Tags: []string{"v3"}, UpdateTime: now,
+			opts: drydock.NewExportDigestSelectionOptions(1, "latest", 0, now),
+			want: []drydock.ExportCandidateImage{
+				{Digest: "sha:new", Tags: []string{"v3"}, UpdateTime: now},
 			},
 		},
 		"should return single candidate if only one exists": {
 			candidates: []drydock.ExportCandidateImage{
 				{Digest: "sha:single", Tags: nil, UpdateTime: now},
 			},
-			want: drydock.ExportCandidateImage{
-				Digest: "sha:single", Tags: nil, UpdateTime: now,
+			opts: drydock.NewExportDigestSelectionOptions(1, "latest", 0, now),
+			want: []drydock.ExportCandidateImage{
+				{Digest: "sha:single", Tags: nil, UpdateTime: now},
 			},
 		},
-		"should return empty struct when input list is empty": {
+		"should return no candidates when input list is empty": {
 			candidates: []drydock.ExportCandidateImage{},
-			want:       drydock.ExportCandidateImage{},
+			opts:       drydock.NewExportDigestSelectionOptions(1, "latest", 0, now),
+			want:       []drydock.ExportCandidateImage{},
+		},
+		"should keep the N most recent candidates when count is greater than one": {
+			candidates: []drydock.ExportCandidateImage{
+				{Digest: "sha:old", Tags: []string{"v1"}, UpdateTime: lastWeek},
+				{Digest: "sha:mid", Tags: []string{"v2"}, UpdateTime: yesterday},
+				{Digest: "sha:new", Tags: []string{"v3"}, UpdateTime: now},
+			},
+			opts: drydock.NewExportDigestSelectionOptions(2, "", 0, now),
+			want: []drydock.ExportCandidateImage{
+				{Digest: "sha:new", Tags: []string{"v3"}, UpdateTime: now},
+				{Digest: "sha:mid", Tags: []string{"v2"}, UpdateTime: yesterday},
+			},
+		},
+		"should drop candidates older than maxAge": {
+			candidates: []drydock.ExportCandidateImage{
+				{Digest: "sha:old", Tags: []string{"v1"}, UpdateTime: lastWeek},
+				{Digest: "sha:new", Tags: []string{"v3"}, UpdateTime: now},
+			},
+			opts: drydock.NewExportDigestSelectionOptions(10, "", 24*time.Hour, now),
+			want: []drydock.ExportCandidateImage{
+				{Digest: "sha:new", Tags: []string{"v3"}, UpdateTime: now},
+			},
+		},
+		"should return no candidates when all are older than maxAge": {
+			candidates: []drydock.ExportCandidateImage{
+				{Digest: "sha:old", Tags: []string{"v1"}, UpdateTime: lastWeek},
+			},
+			opts: drydock.NewExportDigestSelectionOptions(10, "", time.Hour, now),
+			want: []drydock.ExportCandidateImage{},
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := drydock.ExportSelectBestDigest("test-image", "us-central1", "test-repo", tt.candidates)
+			got := drydock.ExportSelectDigests(tt.candidates, tt.opts)
 
 			// cmp.Diff handles deep comparison including time.Time
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("SelectBestDigest() mismatch (-want +got):\n%s", diff)
+				t.Errorf("selectDigests() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestRepositoryAllowed(t *testing.T) {
+	tests := map[string]struct {
+		repositoryID string
+		include      map[string]struct{}
+		exclude      map[string]struct{}
+		want         bool
+	}{
+		"should allow any repository when no filters are set": {
+			repositoryID: "my-repo",
+			want:         true,
+		},
+		"should allow a repository that is in the include set": {
+			repositoryID: "my-repo",
+			include:      map[string]struct{}{"my-repo": {}},
+			want:         true,
+		},
+		"should reject a repository that is not in the include set": {
+			repositoryID: "other-repo",
+			include:      map[string]struct{}{"my-repo": {}},
+			want:         false,
+		},
+		"should reject a repository that is in the exclude set": {
+			repositoryID: "my-repo",
+			exclude:      map[string]struct{}{"my-repo": {}},
+			want:         false,
+		},
+		"should reject a repository excluded even if it is also included": {
+			repositoryID: "my-repo",
+			include:      map[string]struct{}{"my-repo": {}},
+			exclude:      map[string]struct{}{"my-repo": {}},
+			want:         false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := drydock.ExportRepositoryAllowed(tt.repositoryID, tt.include, tt.exclude)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("repositoryAllowed() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestMatchesAnyImagePattern(t *testing.T) {
+	tests := map[string]struct {
+		imageName string
+		patterns  []string
+		want      bool
+	}{
+		"should match any image when no patterns are set": {
+			imageName: "service/worker",
+			want:      true,
+		},
+		"should match an exact pattern": {
+			imageName: "worker",
+			patterns:  []string{"worker"},
+			want:      true,
+		},
+		"should match a glob prefix pattern": {
+			imageName: "service/worker",
+			patterns:  []string{"service/*"},
+			want:      true,
+		},
+		"should match when any of several patterns matches": {
+			imageName: "service/worker",
+			patterns:  []string{"other/*", "service/*"},
+			want:      true,
+		},
+		"should not match when no pattern matches": {
+			imageName: "service/worker",
+			patterns:  []string{"other/*"},
+			want:      false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := drydock.ExportMatchesAnyImagePattern(tt.imageName, tt.patterns)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("matchesAnyImagePattern() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

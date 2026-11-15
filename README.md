@@ -88,6 +88,30 @@ If you don't specify a project ID, Drydock will attempt to infer it from your en
 drydock -l us-central1
 ```
 
+**5. Scan the 3 most recently pushed digests per image**
+Useful when a rollback window means older tags may still be running.
+
+```bash
+drydock -l us-central1 --latest 3
+```
+
+**6. Restrict discovery to specific repositories**
+Only scan images under the given Artifact Registry repositories.
+
+```bash
+drydock -l us-central1 --repository prod --repository staging
+```
+
+**7. Scan a fixed, explicit set of images**
+Bypass discovery entirely and scan exactly the given image references
+(tag or digest). This is handy for pinning a CI job to the image it just
+built.
+
+```bash
+drydock -l us-central1 \
+  --digest us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+```
+
 ### Options
 
 | Flag                    | Description                                                     | Default                 |
@@ -99,6 +123,14 @@ drydock -l us-central1
 | `-o`, `--output-format` | Output format: `json`, `csv`, `tsv`                             | `json`                  |
 | `-c`, `--concurrency`   | Number of concurrent API requests                               | `5`                     |
 | `-d`, `--debug`         | Enable verbose logging                                          | `false`                 |
+| `--latest`              | Number of most relevant digests to keep per image               | `1`                     |
+| `--repository`          | Restrict discovery to this repository ID (repeatable)           | all repositories        |
+| `--exclude-repository`  | Exclude this repository ID from discovery (repeatable)          | none                    |
+| `--image-filter`        | Glob pattern restricting which image names are discovered (repeatable) | all images       |
+| `--max-age`             | Exclude digests last updated more than this long ago (e.g. `720h`) | no limit             |
+| `--digest`              | Explicit image reference to scan; bypasses discovery (repeatable) | -                      |
+
+`--digest` takes precedence over `--latest`, `--repository`, `--exclude-repository`, `--image-filter` and `--max-age`: when set, discovery is skipped entirely and exactly the given images are scanned.
 
 ## 🔑 Prerequisites
 
@@ -161,3 +193,53 @@ scanner, err := drydock.NewScanner(ctx, "us-central1",
 ```
 
 For a complete working example of a Markdown exporter, see the [markdown_exporter example](./examples/markdown_exporter).
+
+### Choosing Scan Targets
+
+By default, `Scanner` discovers targets from Artifact Registry through a `LatestResolver`,
+keeping one digest per image and preferring the `latest` tag when present. `LatestResolver`
+can be tuned, or swapped out entirely for a custom `TargetResolver`:
+
+```go
+type TargetResolver interface {
+    Resolve(ctx context.Context) ([]ImageTarget, error)
+}
+```
+
+**Tuning the default discovery:**
+
+```go
+scanner, err := drydock.NewScanner(ctx, "us-central1",
+    drydock.WithLatestResolverOptions(
+        drydock.WithLatestCount(3),                      // keep the 3 most relevant digests per image
+        drydock.WithRepositories("prod", "staging"),      // only scan these repositories
+        drydock.WithMaxAge(30*24*time.Hour),              // ignore digests older than 30 days
+    ),
+)
+```
+
+**Scanning a fixed set of images with `StaticResolver`:**
+
+```go
+ref, err := drydock.ParseArtifactURI("us-central1-docker.pkg.dev/my-project/my-repo/my-image@sha256:...")
+target := drydock.ImageTarget{Artifact: ref, Location: "us-central1"}
+
+scanner, err := drydock.NewScanner(ctx, "us-central1",
+    drydock.WithTargetResolver(drydock.NewStaticResolver(target)),
+)
+```
+
+**Combining resolvers with `UnionResolver`:**
+
+```go
+imageResolver, err := drydock.NewImageResolver(ctx)
+latest := drydock.NewLatestResolver(imageResolver, "my-project-id", "us-central1")
+pinned := drydock.NewStaticResolver(target)
+
+scanner, err := drydock.NewScanner(ctx, "us-central1",
+    drydock.WithTargetResolver(drydock.NewUnionResolver(latest, pinned)),
+)
+```
+
+`UnionResolver` merges the results of its resolvers and removes duplicate digests, keeping
+the first occurrence in resolver order.

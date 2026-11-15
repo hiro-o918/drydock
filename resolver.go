@@ -69,14 +69,10 @@ func (r *ImageResolver) AllLatestImages(ctx context.Context, projectID, location
 // digestSelectionOptions configures how candidate digests are narrowed down
 // to the ones that should be scanned for a single image.
 type digestSelectionOptions struct {
-	// count is the number of digests to keep. If <= 0, all candidates are kept.
-	count int
-	// preferTag is the tag that is always ranked ahead of other candidates
-	// when present. "" disables tag preference.
+	count     int
 	preferTag string
-	// maxAge excludes candidates older than now-maxAge. <= 0 disables age filtering.
-	maxAge time.Duration
-	now    time.Time
+	maxAge    time.Duration
+	now       time.Time
 }
 
 // selectDigests narrows candidates down to at most opts.count entries,
@@ -116,16 +112,11 @@ func selectDigests(candidates []candidateImage, opts digestSelectionOptions) []c
 
 // scanPolicy configures target discovery across repositories and images.
 type scanPolicy struct {
-	selection digestSelectionOptions
-	// maxCandidates bounds how many of the most recently updated images are
-	// inspected per image name before selection is applied.
-	maxCandidates int
-	// includeRepositories, when non-empty, restricts discovery to these repository IDs.
+	selection           digestSelectionOptions
+	maxCandidates       int
 	includeRepositories map[string]struct{}
 	excludeRepositories map[string]struct{}
-	// imagePatterns, when non-empty, restricts discovery to images whose name
-	// matches at least one glob pattern (see path.Match).
-	imagePatterns []string
+	imagePatterns       []string
 }
 
 // defaultScanPolicy reproduces the historical AllLatestImages behavior: one
@@ -137,9 +128,6 @@ func defaultScanPolicy() scanPolicy {
 	}
 }
 
-// repositoryAllowed reports whether repositoryID passes the include/exclude
-// repository filters. An empty include set allows every repository unless it
-// is explicitly excluded.
 func repositoryAllowed(repositoryID string, include, exclude map[string]struct{}) bool {
 	if len(include) > 0 {
 		if _, ok := include[repositoryID]; !ok {
@@ -150,8 +138,7 @@ func repositoryAllowed(repositoryID string, include, exclude map[string]struct{}
 	return !excluded
 }
 
-// sortedImageNames returns grouped's keys sorted alphabetically, so callers
-// don't depend on Go's randomized map iteration order.
+// sortedImageNames avoids depending on Go's randomized map iteration order.
 func sortedImageNames(grouped map[string][]candidateImage) []string {
 	names := make([]string, 0, len(grouped))
 	for name := range grouped {
@@ -161,8 +148,6 @@ func sortedImageNames(grouped map[string][]candidateImage) []string {
 	return names
 }
 
-// matchesAnyImagePattern reports whether imageName matches at least one of
-// the given glob patterns. An empty pattern list matches every image.
 func matchesAnyImagePattern(imageName string, patterns []string) bool {
 	if len(patterns) == 0 {
 		return true

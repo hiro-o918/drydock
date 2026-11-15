@@ -44,9 +44,9 @@ func TestStaticResolver_Resolve(t *testing.T) {
 			targets: []drydock.ImageTarget{newTestTarget("app-a", "sha:a"), newTestTarget("app-b", "sha:b")},
 			want:    []drydock.ImageTarget{newTestTarget("app-a", "sha:a"), newTestTarget("app-b", "sha:b")},
 		},
-		"should return no targets when none are configured": {
+		"should return an empty, non-nil slice when none are configured": {
 			targets: nil,
-			want:    nil,
+			want:    []drydock.ImageTarget{},
 		},
 	}
 
@@ -95,6 +95,10 @@ func TestUnionResolver_Resolve(t *testing.T) {
 			},
 			want:    []drydock.ImageTarget{newTestTarget("app-b", "sha:b")},
 			wantErr: true,
+		},
+		"should return an empty, non-nil slice when no resolvers are given": {
+			resolvers: nil,
+			want:      []drydock.ImageTarget{},
 		},
 	}
 

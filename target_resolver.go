@@ -20,7 +20,9 @@ type StaticResolver struct {
 
 // NewStaticResolver returns a TargetResolver that always resolves to the given targets.
 func NewStaticResolver(targets ...ImageTarget) *StaticResolver {
-	return &StaticResolver{targets: slices.Clone(targets)}
+	normalized := make([]ImageTarget, len(targets))
+	copy(normalized, targets)
+	return &StaticResolver{targets: normalized}
 }
 
 // Resolve implements TargetResolver.
@@ -56,8 +58,6 @@ func (r *UnionResolver) Resolve(ctx context.Context) ([]ImageTarget, error) {
 	return dedupTargets(all), errs
 }
 
-// targetDigestKey returns the key used to deduplicate targets: the resolved
-// digest when known, otherwise the full artifact reference string.
 func targetDigestKey(t ImageTarget) string {
 	if t.Artifact.Digest != nil {
 		return *t.Artifact.Digest
@@ -65,8 +65,6 @@ func targetDigestKey(t ImageTarget) string {
 	return t.Artifact.String()
 }
 
-// dedupTargets removes targets whose digest already appeared earlier in the
-// slice, keeping the first occurrence and preserving input order.
 func dedupTargets(targets []ImageTarget) []ImageTarget {
 	seen := make(map[string]struct{}, len(targets))
 	result := make([]ImageTarget, 0, len(targets))

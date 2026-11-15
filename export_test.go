@@ -8,6 +8,7 @@ var (
 	ExportBuildSummary                 = buildSummary
 	ExportSelectBestDigest             = selectBestDigest
 	ExportExtractLocationAndRepository = extractLocationAndRepository
+	ExportDedupTargets                 = dedupTargets
 )
 
 type ExportCandidateImage = candidateImage

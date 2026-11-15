@@ -132,6 +132,8 @@ drydock -l us-central1 \
 
 `--digest` takes precedence over `--latest`, `--repository`, `--exclude-repository`, `--image-filter` and `--max-age`: when set, discovery is skipped entirely and exactly the given images are scanned.
 
+`--image-filter` patterns follow Go's [`path.Match`](https://pkg.go.dev/path#Match) glob syntax, where `*` does not cross a `/`.
+
 ## 🔑 Prerequisites
 
 Ensure you have the following configured before running:
@@ -243,3 +245,6 @@ scanner, err := drydock.NewScanner(ctx, "us-central1",
 
 `UnionResolver` merges the results of its resolvers and removes duplicate digests, keeping
 the first occurrence in resolver order.
+
+Note that `Scanner.Scan` fully resolves targets before analyzing any of them, since
+deduplicating a `UnionResolver`'s combined results requires the whole set up front.

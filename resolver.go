@@ -150,6 +150,17 @@ func repositoryAllowed(repositoryID string, include, exclude map[string]struct{}
 	return !excluded
 }
 
+// sortedImageNames returns grouped's keys sorted alphabetically, so callers
+// don't depend on Go's randomized map iteration order.
+func sortedImageNames(grouped map[string][]candidateImage) []string {
+	names := make([]string, 0, len(grouped))
+	for name := range grouped {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
 // matchesAnyImagePattern reports whether imageName matches at least one of
 // the given glob patterns. An empty pattern list matches every image.
 func matchesAnyImagePattern(imageName string, patterns []string) bool {
@@ -281,7 +292,8 @@ func (r *ImageResolver) scanRepository(ctx context.Context, repoName string, pol
 	}
 
 	var results []ImageTarget
-	for name, candidates := range grouped {
+	for _, name := range sortedImageNames(grouped) {
+		candidates := grouped[name]
 		for _, best := range selectDigests(candidates, policy.selection) {
 			// Parse the URI to get ArtifactReference
 			artifactRef, err := ParseArtifactURI(best.URI)

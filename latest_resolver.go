@@ -37,9 +37,15 @@ func NewLatestResolver(imageResolver *ImageResolver, projectID, location string,
 	return r
 }
 
-// WithLatestCount sets how many of the most relevant digests to keep per image.
+// WithLatestCount sets how many of the most relevant digests to keep per
+// image. Values below 1 are clamped to 1: the per-image candidate pool is
+// bounded by maxCandidates, so an "unlimited" count would silently depend on
+// that bound rather than mean every digest.
 func WithLatestCount(n int) LatestResolverOption {
 	return func(r *LatestResolver) {
+		if n < 1 {
+			n = 1
+		}
 		r.policy.selection.count = n
 		if n > r.policy.maxCandidates {
 			r.policy.maxCandidates = n
@@ -70,7 +76,7 @@ func WithExcludeRepositories(repositoryIDs ...string) LatestResolverOption {
 }
 
 // WithImageFilter restricts discovery to images whose name matches at least
-// one of the given glob patterns (see path.Match).
+// one of the given glob patterns (see path.Match; "*" does not cross "/").
 func WithImageFilter(patterns ...string) LatestResolverOption {
 	return func(r *LatestResolver) {
 		r.policy.imagePatterns = patterns

@@ -276,6 +276,35 @@ func TestMatchesAnyImagePattern(t *testing.T) {
 	}
 }
 
+func TestSortedImageNames(t *testing.T) {
+	tests := map[string]struct {
+		grouped map[string][]drydock.ExportCandidateImage
+		want    []string
+	}{
+		"should sort image names alphabetically regardless of insertion order": {
+			grouped: map[string][]drydock.ExportCandidateImage{
+				"service/worker": {},
+				"app":            {},
+				"service/api":    {},
+			},
+			want: []string{"app", "service/api", "service/worker"},
+		},
+		"should return an empty slice when there are no images": {
+			grouped: map[string][]drydock.ExportCandidateImage{},
+			want:    []string{},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := drydock.ExportSortedImageNames(tt.grouped)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("sortedImageNames() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestExtractLocationAndRepository(t *testing.T) {
 	tests := map[string]struct {
 		input        string

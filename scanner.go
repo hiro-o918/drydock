@@ -16,13 +16,15 @@ import (
 
 // Scanner handles the scanning of container images.
 type Scanner struct {
-	location      string
-	projectID     string
-	concurrency   uint8
-	resolver      *ImageResolver
-	analyzer      *ArtifactRegistryAnalyzer
-	exporter      Exporter
-	clientOptions []option.ClientOption // クライアント作成時のオプション
+	location           string
+	projectID          string
+	concurrency        uint8
+	resolver           *ImageResolver
+	targetResolver     TargetResolver
+	latestResolverOpts []LatestResolverOption
+	analyzer           *ArtifactRegistryAnalyzer
+	exporter           Exporter
+	clientOptions      []option.ClientOption // クライアント作成時のオプション
 }
 
 // ScannerOption defines a function type that can configure a Scanner
@@ -48,6 +50,26 @@ func WithConcurrency(concurrency uint8) ScannerOption {
 func WithResolver(resolver *ImageResolver) ScannerOption {
 	return func(s *Scanner) error {
 		s.resolver = resolver
+		return nil
+	}
+}
+
+// WithTargetResolver sets a custom TargetResolver used to discover scan
+// targets, taking precedence over the default Artifact Registry discovery
+// (and over WithLatestResolverOptions).
+func WithTargetResolver(resolver TargetResolver) ScannerOption {
+	return func(s *Scanner) error {
+		s.targetResolver = resolver
+		return nil
+	}
+}
+
+// WithLatestResolverOptions configures the default LatestResolver's
+// selection policy (digest count, tag preference, repository/image
+// filtering, max age). It is ignored when WithTargetResolver is used.
+func WithLatestResolverOptions(opts ...LatestResolverOption) ScannerOption {
+	return func(s *Scanner) error {
+		s.latestResolverOpts = append(s.latestResolverOpts, opts...)
 		return nil
 	}
 }
@@ -124,12 +146,16 @@ func NewScanner(
 	// Create default components if not provided via options
 	var err error
 
-	// Default resolver if not set
-	if scanner.resolver == nil {
-		scanner.resolver, err = NewImageResolver(ctx, scanner.clientOptions...)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create default image resolver: %w", err)
+	// Default target resolver if not set: wraps the (possibly default)
+	// ImageResolver in a LatestResolver, reproducing the historical behavior.
+	if scanner.targetResolver == nil {
+		if scanner.resolver == nil {
+			scanner.resolver, err = NewImageResolver(ctx, scanner.clientOptions...)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create default image resolver: %w", err)
+			}
 		}
+		scanner.targetResolver = NewLatestResolver(scanner.resolver, scanner.projectID, scanner.location, scanner.latestResolverOpts...)
 	}
 
 	// Default analyzer if not set
@@ -172,34 +198,31 @@ func (c *scanCollector) addError(err error) {
 	c.errs = errors.Join(c.errs, err)
 }
 
-// Scan iterates over images, analyzes them concurrently, and exports the results.
+// Scan resolves targets, analyzes them concurrently, and exports the results.
 func (s *Scanner) Scan(ctx context.Context, minSeverity schemas.Severity, fixableOnly bool) error {
-	log.Debug().Msg("Resolving images from Artifact Registry...")
+	log.Debug().Msg("Resolving scan targets...")
 
 	collector := &scanCollector{
 		results: make([]schemas.AnalyzeResult, 0),
+	}
+
+	// 1. Resolve Targets
+	targets, err := s.targetResolver.Resolve(ctx)
+	if err != nil {
+		log.Warn().Err(err).Msg("Error occurred during target resolution")
+		collector.addError(fmt.Errorf("resolving targets: %w", err))
 	}
 
 	// Semaphore to limit concurrency
 	sem := make(chan struct{}, s.concurrency)
 	var wg sync.WaitGroup
 
-	count := 0
-
-	// 1. Resolve Targets (Producer)
-	for target, err := range s.resolver.AllLatestImages(ctx, s.projectID, s.location) {
-		if err != nil {
-			log.Warn().Err(err).Msg("Error occurred during image resolution stream")
-			collector.addError(fmt.Errorf("resolving image stream: %w", err))
-			continue
-		}
-		count++
-
+	// 2. Analyze Targets (Consumer)
+	for _, target := range targets {
 		// Acquire semaphore (blocks if limit is reached)
 		sem <- struct{}{}
 		wg.Add(1)
 
-		// 2. Analyze Target (Consumer)
 		go func(t ImageTarget) {
 			defer wg.Done()
 			defer func() { <-sem }() // Release semaphore
@@ -212,7 +235,7 @@ func (s *Scanner) Scan(ctx context.Context, minSeverity schemas.Severity, fixabl
 	wg.Wait()
 
 	log.Info().
-		Int("targets_found", count).
+		Int("targets_found", len(targets)).
 		Int("scanned_successfully", len(collector.results)).
 		Msg("Scan phase completed")
 
@@ -265,8 +288,12 @@ func (s *Scanner) analyzeTarget(
 // Close releases all resources used by the scanner
 func (s *Scanner) Close() error {
 	var errs error
-	if err := s.resolver.Close(); err != nil {
-		errs = errors.Join(errs, fmt.Errorf("failed to close resolver: %w", err))
+	// s.resolver stays nil when a custom TargetResolver was supplied without
+	// also registering an ImageResolver via WithResolver.
+	if s.resolver != nil {
+		if err := s.resolver.Close(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("failed to close resolver: %w", err))
+		}
 	}
 
 	if err := s.analyzer.Close(); err != nil {

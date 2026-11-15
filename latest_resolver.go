@@ -108,6 +108,15 @@ func (r *LatestResolver) Resolve(ctx context.Context) ([]ImageTarget, error) {
 	return targets, errs
 }
 
+// Close closes the underlying ImageResolver, so a LatestResolver supplied
+// directly via WithTargetResolver is still cleaned up by Scanner.Close.
+func (r *LatestResolver) Close() error {
+	if r.imageResolver == nil {
+		return nil
+	}
+	return r.imageResolver.Close()
+}
+
 func toSet(values []string) map[string]struct{} {
 	set := make(map[string]struct{}, len(values))
 	for _, v := range values {

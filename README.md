@@ -235,6 +235,7 @@ scanner, err := drydock.NewScanner(ctx, "us-central1",
 
 ```go
 imageResolver, err := drydock.NewImageResolver(ctx)
+defer imageResolver.Close()
 latest := drydock.NewLatestResolver(imageResolver, "my-project-id", "us-central1")
 pinned := drydock.NewStaticResolver(target)
 
@@ -248,3 +249,12 @@ the first occurrence in resolver order.
 
 Note that `Scanner.Scan` fully resolves targets before analyzing any of them, since
 deduplicating a `UnionResolver`'s combined results requires the whole set up front.
+
+### Who closes what
+
+`Scanner.Close` closes a resolver passed via `WithResolver`, and also closes a resolver
+passed via `WithTargetResolver` if it implements `io.Closer` (as `LatestResolver` does),
+without closing the same underlying `ImageResolver` twice. `UnionResolver` and
+`StaticResolver` don't own or close the resolvers/clients they're built from, so when you
+construct an `ImageResolver` yourself (as in the `UnionResolver` example above), you're
+responsible for closing it.

@@ -46,7 +46,9 @@ func WithConcurrency(concurrency uint8) ScannerOption {
 	}
 }
 
-// WithResolver sets a custom ImageResolver
+// WithResolver sets a custom ImageResolver. If WithTargetResolver is also
+// used, this resolver is not used for discovery; it is only kept so
+// Scanner.Close still closes it.
 func WithResolver(resolver *ImageResolver) ScannerOption {
 	return func(s *Scanner) error {
 		s.resolver = resolver
@@ -56,7 +58,7 @@ func WithResolver(resolver *ImageResolver) ScannerOption {
 
 // WithTargetResolver sets a custom TargetResolver used to discover scan
 // targets, taking precedence over the default Artifact Registry discovery
-// (and over WithLatestResolverOptions).
+// (and over WithLatestResolverOptions and any resolver set via WithResolver).
 func WithTargetResolver(resolver TargetResolver) ScannerOption {
 	return func(s *Scanner) error {
 		s.targetResolver = resolver
@@ -296,9 +298,23 @@ func (s *Scanner) Close() error {
 		}
 	}
 
+	if closer, ok := s.targetResolver.(io.Closer); ok && !sameUnderlyingImageResolver(s.targetResolver, s.resolver) {
+		if err := closer.Close(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("failed to close target resolver: %w", err))
+		}
+	}
+
 	if err := s.analyzer.Close(); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("failed to close analyzer: %w", err))
 	}
 
 	return errs
+}
+
+// sameUnderlyingImageResolver reports whether closing target would also
+// close resolver, so Scanner.Close does not close the same *ImageResolver
+// twice when target is the default LatestResolver wrapping it.
+func sameUnderlyingImageResolver(target TargetResolver, resolver *ImageResolver) bool {
+	lr, ok := target.(*LatestResolver)
+	return ok && resolver != nil && lr.imageResolver == resolver
 }

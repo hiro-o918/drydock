@@ -14,6 +14,7 @@ var (
 	ExportRepositoryAllowed            = repositoryAllowed
 	ExportMatchesAnyImagePattern       = matchesAnyImagePattern
 	ExportSortedImageNames             = sortedImageNames
+	ExportSameUnderlyingImageResolver  = sameUnderlyingImageResolver
 )
 
 type ExportCandidateImage = candidateImage

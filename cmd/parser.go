@@ -34,10 +34,15 @@ func (c *Config) Validate() error {
 	if c.Location == "" {
 		return errors.New("flag `-l`, `--location` is required")
 	}
-	// --latest is ignored once --digest is set (see targetResolverOption), so
-	// an unused --latest value should not block startup.
-	if len(c.Digests) == 0 && c.Latest < 1 {
-		return errors.New("flag `--latest` must be at least 1")
+	// --latest and --max-age are both ignored once --digest is set (see
+	// targetResolverOption), so an unused value should not block startup.
+	if len(c.Digests) == 0 {
+		if c.Latest < 1 {
+			return errors.New("flag `--latest` must be at least 1")
+		}
+		if c.MaxAge < 0 {
+			return errors.New("flag `--max-age` must not be negative")
+		}
 	}
 	// OutputFormat validation is handled during flag parsing, so it's not needed here.
 	return nil

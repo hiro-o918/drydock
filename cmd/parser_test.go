@@ -123,6 +123,26 @@ func TestParseFlags(t *testing.T) {
 				Digests:      []string{"us-central1-docker.pkg.dev/p/r/img@sha256:aaa"},
 			},
 		},
+		"should return error when max-age is negative": {
+			args:    []string{"-l", "us-central1", "--max-age", "-1h"},
+			wantErr: true,
+		},
+		"should allow negative max-age when digest is set": {
+			args: []string{
+				"-l", "us-central1",
+				"--max-age", "-1h",
+				"--digest", "us-central1-docker.pkg.dev/p/r/img@sha256:aaa",
+			},
+			want: &Config{
+				Location:     "us-central1",
+				MinSeverity:  "HIGH",
+				OutputFormat: drydock.OutputFormatJSON,
+				Concurrency:  5,
+				Latest:       1,
+				MaxAge:       -time.Hour,
+				Digests:      []string{"us-central1-docker.pkg.dev/p/r/img@sha256:aaa"},
+			},
+		},
 	}
 
 	for name, tt := range tests {

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/hiro-o918/drydock/compare/v0.2.2...v0.3.0) (2026-11-15)
+
+
+### Features
+
+* configurable target resolution for scan discovery ([#7](https://github.com/hiro-o918/drydock/issues/7)) ([6d9ac49](https://github.com/hiro-o918/drydock/commit/6d9ac49f9d74dc891b74db9a967b3412f6da1558))
+
 ## [0.2.2](https://github.com/hiro-o918/drydock/compare/v0.2.1...v0.2.2) (2025-12-17)
 
 

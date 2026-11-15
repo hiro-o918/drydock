@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/hiro-o918/drydock"
 	"github.com/rs/zerolog/log"
@@ -105,33 +106,76 @@ func targetResolverOption(cfg *Config) (drydock.ScannerOption, error) {
 			log.Debug().Msg("--digest set; ignoring --latest, --repository, --exclude-repository, --image-filter and --max-age")
 		}
 
-		targets := make([]drydock.ImageTarget, 0, len(cfg.Digests))
-		for _, d := range cfg.Digests {
-			ref, err := drydock.ParseArtifactURI(d)
-			if err != nil {
-				return nil, fmt.Errorf("invalid --digest value %q: %w", d, err)
-			}
-			targets = append(targets, drydock.ImageTarget{
-				Artifact: ref,
-				URI:      d,
-				Location: cfg.Location,
-			})
+		targets, err := buildStaticTargets(cfg.Digests, cfg.Location)
+		if err != nil {
+			return nil, err
 		}
 		return drydock.WithTargetResolver(drydock.NewStaticResolver(targets...)), nil
 	}
 
-	latestOpts := []drydock.LatestResolverOption{drydock.WithLatestCount(cfg.Latest)}
+	return drydock.WithLatestResolverOptions(newLatestDiscoveryConfig(cfg).toOptions()...), nil
+}
+
+// buildStaticTargets parses each digest (tag or digest image reference)
+// into an ImageTarget for StaticResolver.
+func buildStaticTargets(digests []string, location string) ([]drydock.ImageTarget, error) {
+	targets := make([]drydock.ImageTarget, 0, len(digests))
+	for _, d := range digests {
+		ref, err := drydock.ParseArtifactURI(d)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --digest value %q: %w", d, err)
+		}
+		targets = append(targets, drydock.ImageTarget{
+			Artifact: ref,
+			URI:      d,
+			Location: location,
+		})
+	}
+	return targets, nil
+}
+
+// latestDiscoveryConfig is the pure, comparable representation of which
+// LatestResolverOptions to apply. It is kept separate from the
+// drydock.LatestResolverOption closures it builds (which cannot be compared
+// in tests) so the CLI-flag-to-policy mapping stays directly testable.
+type latestDiscoveryConfig struct {
+	count               int
+	repositories        []string
+	excludeRepositories []string
+	imageFilters        []string
+	maxAge              time.Duration
+}
+
+func newLatestDiscoveryConfig(cfg *Config) latestDiscoveryConfig {
+	c := latestDiscoveryConfig{count: cfg.Latest}
 	if len(cfg.Repositories) > 0 {
-		latestOpts = append(latestOpts, drydock.WithRepositories(cfg.Repositories...))
+		c.repositories = cfg.Repositories
 	}
 	if len(cfg.ExcludeRepositories) > 0 {
-		latestOpts = append(latestOpts, drydock.WithExcludeRepositories(cfg.ExcludeRepositories...))
+		c.excludeRepositories = cfg.ExcludeRepositories
 	}
 	if len(cfg.ImageFilters) > 0 {
-		latestOpts = append(latestOpts, drydock.WithImageFilter(cfg.ImageFilters...))
+		c.imageFilters = cfg.ImageFilters
 	}
 	if cfg.MaxAge > 0 {
-		latestOpts = append(latestOpts, drydock.WithMaxAge(cfg.MaxAge))
+		c.maxAge = cfg.MaxAge
 	}
-	return drydock.WithLatestResolverOptions(latestOpts...), nil
+	return c
+}
+
+func (c latestDiscoveryConfig) toOptions() []drydock.LatestResolverOption {
+	opts := []drydock.LatestResolverOption{drydock.WithLatestCount(c.count)}
+	if len(c.repositories) > 0 {
+		opts = append(opts, drydock.WithRepositories(c.repositories...))
+	}
+	if len(c.excludeRepositories) > 0 {
+		opts = append(opts, drydock.WithExcludeRepositories(c.excludeRepositories...))
+	}
+	if len(c.imageFilters) > 0 {
+		opts = append(opts, drydock.WithImageFilter(c.imageFilters...))
+	}
+	if c.maxAge > 0 {
+		opts = append(opts, drydock.WithMaxAge(c.maxAge))
+	}
+	return opts
 }

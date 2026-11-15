@@ -108,6 +108,21 @@ func TestParseFlags(t *testing.T) {
 			args:    []string{"-l", "us-central1", "--latest", "0"},
 			wantErr: true,
 		},
+		"should allow latest below one when digest is set": {
+			args: []string{
+				"-l", "us-central1",
+				"--latest", "0",
+				"--digest", "us-central1-docker.pkg.dev/p/r/img@sha256:aaa",
+			},
+			want: &Config{
+				Location:     "us-central1",
+				MinSeverity:  "HIGH",
+				OutputFormat: drydock.OutputFormatJSON,
+				Concurrency:  5,
+				Latest:       0,
+				Digests:      []string{"us-central1-docker.pkg.dev/p/r/img@sha256:aaa"},
+			},
+		},
 	}
 
 	for name, tt := range tests {

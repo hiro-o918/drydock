@@ -130,8 +130,6 @@ func convertToVulnerability(occ *grafeaspb.Occurrence) (schemas.Vulnerability, e
 	return vuln, nil
 }
 
-// formatVersion renders a grafeas Version as a human-readable string.
-//
 // MINIMUM/MAXIMUM are grafeas sentinels for an open-ended range boundary, not
 // an actual version (see grafeas.v1.Version_VersionKind), so they format to "".
 func formatVersion(ver *grafeaspb.Version) string {

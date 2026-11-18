@@ -48,7 +48,7 @@ func TestConvertToVulnerability(t *testing.T) {
 				FixedVersion:     "1.1.1t",
 			},
 		},
-		"should include revision and epoch for an OS package with a distinct fixed version": {
+		"should include epoch and revision when package is an OS package with Epoch and Revision set": {
 			input: buildOccurrence(&grafeaspb.VulnerabilityOccurrence_PackageIssue{
 				AffectedPackage: "libxml2",
 				AffectedVersion: &grafeaspb.Version{Kind: grafeaspb.Version_NORMAL, Epoch: 1, Name: "2.9.10", Revision: "5"},

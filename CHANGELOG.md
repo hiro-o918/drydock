@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/hiro-o918/drydock/compare/v0.3.0...v0.3.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* バージョン文字列のフォーマットを修正 ([#9](https://github.com/hiro-o918/drydock/issues/9)) ([d32515b](https://github.com/hiro-o918/drydock/commit/d32515bf6d04b7116811ca5b0b1db499cec7b65c))
+
 ## [0.3.0](https://github.com/hiro-o918/drydock/compare/v0.2.2...v0.3.0) (2026-11-15)
 
 

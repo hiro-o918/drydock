@@ -3,6 +3,8 @@ package drydock
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	containeranalysis "cloud.google.com/go/containeranalysis/apiv1"
@@ -109,13 +111,8 @@ func convertToVulnerability(occ *grafeaspb.Occurrence) (schemas.Vulnerability, e
 		// 1. Extract the specific 'package_type' (e.g., "OS", "GO", "MAVEN") if available.
 		packageType = issue.GetPackageType()
 
-		if ver := issue.AffectedVersion; ver != nil {
-			installedVer = fmt.Sprintf("%s (Kind: %s)", ver.Name, ver.Kind)
-		}
-
-		if fixed := issue.FixedVersion; fixed != nil {
-			fixedVer = fixed.Name
-		}
+		installedVer = formatVersion(issue.AffectedVersion)
+		fixedVer = formatVersion(issue.FixedVersion)
 	}
 
 	vuln := schemas.Vulnerability{
@@ -131,6 +128,32 @@ func convertToVulnerability(occ *grafeaspb.Occurrence) (schemas.Vulnerability, e
 	}
 
 	return vuln, nil
+}
+
+// formatVersion renders a grafeas Version as a human-readable string.
+//
+// MINIMUM/MAXIMUM are grafeas sentinels for an open-ended range boundary, not
+// an actual version (see grafeas.v1.Version_VersionKind), so they format to "".
+func formatVersion(ver *grafeaspb.Version) string {
+	if ver == nil || ver.GetKind() != grafeaspb.Version_NORMAL {
+		return ""
+	}
+
+	if fullName := ver.GetFullName(); fullName != "" {
+		return fullName
+	}
+
+	var b strings.Builder
+	if epoch := ver.GetEpoch(); epoch != 0 {
+		b.WriteString(strconv.Itoa(int(epoch)))
+		b.WriteString(":")
+	}
+	b.WriteString(ver.GetName())
+	if revision := ver.GetRevision(); revision != "" {
+		b.WriteString("-")
+		b.WriteString(revision)
+	}
+	return b.String()
 }
 
 func convertSeverity(s grafeaspb.Severity) schemas.Severity {

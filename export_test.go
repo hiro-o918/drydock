@@ -5,6 +5,7 @@ import "time"
 // Export internal functions for black-box testing in analyzer_test package.
 var (
 	ExportConvertToVulnerability       = convertToVulnerability
+	ExportFormatVersion                = formatVersion
 	ExportFilterBySeverity             = filterBySeverity
 	ExportFilterFixable                = filterFixable
 	ExportBuildSummary                 = buildSummary
